@@ -1,2 +1,3 @@
 (library
- (name bril))
+ (name bril)
+ (libraries yojson))
