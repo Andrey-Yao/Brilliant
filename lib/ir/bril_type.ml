@@ -7,7 +7,7 @@ type t =
   | BoolType
   | FloatType
   | PtrType of t
-[@@deriving compare, equal, sexp_of]
+[@@deriving compare, equal, hash, sexp_of]
 
 let rec of_json =
   let open Yojson.Basic.Util in

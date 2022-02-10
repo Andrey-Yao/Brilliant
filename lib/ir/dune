@@ -1,5 +1,4 @@
 (library
-  (name bril)
-  (public_name bril)
+  (name ir)
   (libraries core yojson)
   (preprocess (pps ppx_jane)))

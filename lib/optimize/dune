@@ -1,0 +1,4 @@
+(library
+  (name optimize)
+  (libraries ir core yojson ocamlgraph)
+  (preprocess (pps ppx_jane)))

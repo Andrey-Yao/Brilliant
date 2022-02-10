@@ -6,19 +6,15 @@ type t = {
   name : string;
   args : Instr.dest list;
   ret_type : Bril_type.t option;
-  blocks : Instr.t list String.Map.t;
-  order : string list;
-  preds : string list String.Map.t;
-  succs : string list String.Map.t;
+  instructions : Instr.t list;
 }
 [@@deriving compare, equal, sexp_of]
 
-val instrs : t -> Instr.t list
-val set_instrs : t -> Instr.t list -> t
 val of_json : Yojson.Basic.t -> t
 val to_json : t -> Yojson.Basic.t
 val to_string : t -> string
 
+(*
 module Dominance : sig
   module type S = sig
     type out
@@ -33,3 +29,4 @@ module Dominance : sig
   module Sets : S with type out := String.Set.t
   module Lists : S with type out := string list
 end
+ *)

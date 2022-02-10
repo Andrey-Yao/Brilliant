@@ -23,7 +23,7 @@ module Binary : sig
     | Fge
     | And
     | Or
-  [@@deriving compare, equal, sexp_of]
+  [@@deriving compare, equal, hash, sexp_of]
 
   val is_op : string -> bool
   val of_string : string -> t
@@ -35,7 +35,7 @@ module Unary : sig
   type t =
     | Not
     | Id
-  [@@deriving compare, equal, sexp_of]
+  [@@deriving compare, equal, hash, sexp_of]
 
   val is_op : string -> bool
   val of_string : string -> t
