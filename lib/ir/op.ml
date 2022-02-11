@@ -3,7 +3,6 @@ open! Core
 
 module Make (M : sig
   type t [@@deriving compare, equal, hash, sexp_of]
-
   val by_name : (string * t) list
 end) =
 struct

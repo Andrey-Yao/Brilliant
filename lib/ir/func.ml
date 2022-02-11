@@ -9,12 +9,10 @@ type t = {
   instructions: Instr.t list;
   }[@@deriving compare, equal, sexp_of]
 
-
 let of_json json =
   let open Yojson.Basic.Util in
   let arg_of_json json =
-    (json |> member "name" |> to_string, json |> member "type" |> Bril_type.of_json)
-  in
+    (json |> member "name" |> to_string, json |> member "type" |> Bril_type.of_json) in
   let name = json |> member "name" |> to_string in
   let args = json |> member "args" |> to_list_nonnull |> List.map ~f:arg_of_json in
   let ret_type = json |> member "type" |> Bril_type.of_json_opt in

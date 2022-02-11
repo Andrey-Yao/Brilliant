@@ -1,18 +1,19 @@
 open! Core
-open Graph.Persistent
 
 
-type vertex = {id: string; instrs: (Ir.Instr.t list)}
-                [@@deriving compare, equal, hash]
-type edge = BrTrue | BrFalse | Default [@@deriving compare]
+type ver = {id: string; instrs: (Ir.Instr.t list)}
+             [@@deriving compare, equal, hash]
+
+type edg = True | False | Next [@@deriving compare]
 
 module Cfg =
   Graph__.Persistent.Digraph.ConcreteBidirectionalLabeled(
-      struct type t = vertex[@@deriving compare, equal, hash] end)(
-      struct type t = edge [@@deriving compare]
-             let default : t = Default end)
+      struct type t = ver[@@deriving compare, equal, hash] end)(
+      struct type t = edg[@@deriving compare]
+             let default : t = Next end)
 
-include Cfg
+
+type succs_annotation = Branch of string * string | Next of string | Leaf
 
 (*Originally from https://github.com/sampsyo/bril/tree/main/bril-ocaml*)
 let process_instrs instrs =
@@ -46,13 +47,13 @@ let process_instrs instrs =
     List.mapi blocks ~f:(fun i (name, block) ->
         let next =
           match List.last_exn block with
-          | Jmp label -> [ label ]
-          | Br (_, l1, l2) -> [ l1; l2 ]
-          | Ret _ -> []
+          | Jmp label -> Next label
+          | Br (_, l1, l2) -> Branch(l1, l2)
+          | Ret _ -> Leaf
           | _ ->
             ( match List.nth blocks (i + 1) with
-            | None -> []
-            | Some (name, _) -> [ name ] )
+            | None -> Leaf
+            | Some (name, _) -> Next name )
         in
         (name, next))
     |> String.Map.of_alist_exn
@@ -60,12 +61,26 @@ let process_instrs instrs =
   (String.Map.of_alist_exn blocks, order, succs)
 
 
-let from_func (f : Ir.Func.t) =
+let from_func (f : Ir.Func.t) : Cfg.t =
+  let open Cfg in
   let blocks, order, succs = process_instrs f.instructions in
-  let vertex_folder g name =
-    let instrs = String.Map.find_exn blocks name in
-    {id=name; instrs=instrs} |> V.create |> add_vertex g in
-  (*let edges_folder g = *)
-  let graph = List.fold ~init:empty ~f:vertex_folder in ()(*
-  let graph = String.Map.fold ~init:graph ~f:
-                (fun key data graph -> match data with)*)
+  let name_to_vertex = fun n ->
+    {id=n; instrs=String.Map.find_exn blocks n} in
+  let vertex_builder g name =
+    name |> name_to_vertex |> V.create |> add_vertex g in
+  let edges_builder ~key ~data g = begin
+      match data with
+    | Leaf -> g
+    | Next l -> 
+        let src = name_to_vertex key in
+        let dst = name_to_vertex l in
+        E.create src Next dst |> add_edge_e g
+    | Branch (t, f) ->
+       let src = name_to_vertex key in
+       let dest_t = name_to_vertex t in
+       let dest_f = name_to_vertex f in
+       let edge_t = E.create src True dest_t in
+       let edge_f = E.create src False dest_f in
+       add_edge_e (add_edge_e g edge_t) edge_f end in
+  let graph = List.fold ~init:empty ~f:vertex_builder order in
+  String.Map.fold ~init:graph ~f:edges_builder succs
