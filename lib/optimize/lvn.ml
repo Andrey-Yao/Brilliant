@@ -4,34 +4,50 @@ open Ir
 
 module Key = struct
   module T = struct
-    type t =
-      | BinExp of Op.Binary.t * int * int
-      | UnaExp of Op.Unary.t * int
-                                 [@@deriving equal, sexp_of]
+    type t = {op: string; args: string list}
+               [@@deriving equal, sexp_of]
     let compare (t1:t) (t2:t) = 0
   end
   include T
   include Comparator.Make(T)
 end
 
+(* Annotates block with last write *)
+let last_write block : (Instr.t * bool) list =
+  let empty = String.Set.empty in
+  let folder set instr =
+    match Instr.dest instr with
+    | Some d ->
+       let var = fst d in
+       if String.Set.mem set var
+       then (set, (instr, false))
+       else (String.Set.add set var, (instr, true))
+    | None -> (set, (instr, false)) in
+  block |> List.rev |> List.folding_map ~init:empty ~f:folder |> List.rev
 
-module Map = Map.M(Key)
+type canon = Constant of Const.t | Variable of string
 
-type value = {rownum: int; canon: string}
-
-type map = value Map.t
-
-(*
-let folder (instr: Instr.t) (mesa, cloud) =
+type info = {
+    val_to_num : int Map.M(Key).t;(*Row of values*)
+    var_to_num : int String.Map.t;(*cloud*)
+    num_to_can : canon Int.Map.t;(*Canon*)
+  }
+  
+let folding_mapper info (instr, last_def) =
   let open Key in
-  match instr with
-  | Binary (dest, o, x, y) -> begin
-      let i1 = 
-      let key = T.BinExp (o, x, y) in
-      
-      
-  |  
+  let dest_opt = Instr.dest instr in
+  let args = Instr.args instr in
+  match args, dest_opt with
+  | [], None -> (info, instr)
+  | _, None -> begin
+     let key = {op=Instr.opcode instr; args} in
+     match Map.find info.val_to_num key with
+     | Some i ->
+        
 
+end
+
+    
 let local_value_number (block: Instr.t list) =
   
  *)

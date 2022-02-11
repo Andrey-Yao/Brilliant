@@ -29,9 +29,10 @@ type t =
 [@@deriving compare, equal, hash, sexp_of]
 
 val dest : t -> dest option
-val set_dest : dest option -> t -> t
+val set_dest : dest option -> t -> t option
 val args : t -> arg list
-val set_args : arg list -> t -> t
+val set_args : arg list -> t -> t option
 val of_json : Yojson.Basic.t -> t
 val to_json : t -> Yojson.Basic.t
 val to_string : t -> string
+val opcode : t -> string

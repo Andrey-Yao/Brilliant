@@ -86,20 +86,17 @@ let dest = function
   | Store _ ->
     None
 
-let set_dest dest t =
-  match (t, dest) with
-  | (Const (_, const), Some dest) -> Const (dest, const)
-  | (Binary (_, op, arg1, arg2), Some dest) -> Binary (dest, op, arg1, arg2)
-  | (Unary (_, op, arg), Some dest) -> Unary (dest, op, arg)
-  | (Call (_, f, args), dest) -> Call (dest, f, args)
-  | (Phi (_, params), Some dest) -> Phi (dest, params)
-  | (Alloc (_, arg), Some dest) -> Alloc (dest, arg)
-  | (Load (_, arg), Some dest) -> Load (dest, arg)
-  | (PtrAdd (_, a1, a2), Some dest) -> PtrAdd (dest, a1, a2)
-  | (instr, None) -> instr
-  | _ ->
-    let dest = [%sexp_of: dest Option.t] dest in
-    failwithf !"Cannot [set_dest] on instruction %{to_string} with dest %{Sexp}" t dest ()
+let set_dest dest t : t option =
+  match t with
+  | Const (_, const) -> Some (Const (dest, const))
+  | Binary (_, op, arg1, arg2) -> Some (Binary (dest, op, arg1, arg2))
+  | Unary (_, op, arg) -> Some (Unary (dest, op, arg))
+  | Call (Some _, f, args) -> Some (Call (Some dest, f, args))
+  | Phi (_, params) -> Some (Phi (dest, params))
+  | Alloc (_, arg) -> Some (Alloc (dest, arg))
+  | Load (_, arg) -> Some (Load (dest, arg))
+  | PtrAdd (_, a1, a2) -> Some (PtrAdd (dest, a1, a2))
+  | _ -> None
 
 let args = function
   | Binary (_, _, arg1, arg2) -> [ arg1; arg2 ]
@@ -108,8 +105,7 @@ let args = function
   | Guard (arg, _) ->
     [ arg ]
   | Call (_, _, args)
-  | Print args ->
-    args
+  | Print args -> args
   | Alloc ((_ : dest), arg) -> [ arg ]
   | Free arg -> [ arg ]
   | Store (arg1, arg2) -> [ arg1; arg2 ]
@@ -117,26 +113,26 @@ let args = function
   | PtrAdd ((_ : dest), arg1, arg2) -> [ arg1; arg2 ]
   | Ret arg -> Option.value_map arg ~default:[] ~f:List.return
   | Phi ((_ : dest), label_and_args) -> List.map label_and_args ~f:snd
-  | (Nop | Speculate | Commit | Label _ | Const (_, _) | Jmp _) as instr ->
-    failwithf "Cannot call [args] on %s" (to_string instr) ()
+  | (Nop | Speculate | Commit | Label _ | Const (_, _) | Jmp _) ->
+     []
 
-let set_args args t =
+let set_args args t : t option =
   match (t, args) with
-  | (Binary (dest, op, _, _), [ arg1; arg2 ]) -> Binary (dest, op, arg1, arg2)
-  | (Unary (dest, op, _), [ arg ]) -> Unary (dest, op, arg)
-  | (Br (_, l1, l2), [ arg ]) -> Br (arg, l1, l2)
-  | (Call (dest, f, _), args) -> Call (dest, f, args)
-  | (Print _, args) -> Print args
-  | (Ret _, []) -> Ret None
-  | (Ret _, [ arg ]) -> Ret (Some arg)
-  | (Guard (_, l), [ arg ]) -> Guard (arg, l)
-  | (Alloc (dst, _), [ arg ]) -> Alloc (dst, arg)
-  | (Free _, [ arg ]) -> Free arg
-  | (Store (_, _), [ a1; a2 ]) -> Store (a1, a2)
-  | (Load (dst, _), [ a ]) -> Load (dst, a)
-  | (PtrAdd (dst, _, _), [ a1; a2 ]) -> PtrAdd (dst, a1, a2)
-  | (instr, []) -> instr
-  | _ -> failwith "invalid set_args"
+  | (Binary (dest, op, _, _), [ arg1; arg2 ]) -> Some (Binary (dest, op, arg1, arg2))
+  | (Unary (dest, op, _), [ arg ]) -> Some (Unary (dest, op, arg))
+  | (Br (_, l1, l2), [ arg ]) -> Some (Br (arg, l1, l2))
+  | (Call (dest, f, _), args) -> Some (Call (dest, f, args))
+  | (Print _, args) -> Some (Print args)
+  | (Ret _, []) -> Some (Ret None)
+  | (Ret _, [ arg ]) -> Some (Ret (Some arg))
+  | (Guard (_, l), [ arg ]) -> Some (Guard (arg, l))
+  | (Alloc (dst, _), [ arg ]) -> Some (Alloc (dst, arg))
+  | (Free _, [ arg ]) -> Some (Free arg)
+  | (Store (_, _), [ a1; a2 ]) -> Some (Store (a1, a2))
+  | (Load (dst, _), [ a ]) -> Some (Load (dst, a))
+  | (PtrAdd (dst, _, _), [ a1; a2 ]) -> Some (PtrAdd (dst, a1, a2))
+  | (instr, []) -> Some instr
+  | _ -> None
 
 let of_json json =
   let open Yojson.Basic.Util in
@@ -263,3 +259,27 @@ let to_json =
   | Load (dest, arg) -> build_op ~op:"load" ~args:[ arg ] ~dest ()
   | Store (arg1, arg2) -> build_op ~op:"load" ~args:[ arg1; arg2 ] ()
   | PtrAdd (dest, arg1, arg2) -> build_op ~op:"ptradd" ~args:[ arg1; arg2 ] ~dest ()
+
+
+let opcode instr : string =
+  match instr with
+  | Label _ -> failwith "Labels have no opcodes"
+  | Const _ -> "const"
+  | Binary (_, o, _, _) -> Op.Binary.to_string o
+  | Unary (_, o, _) -> Op.Unary.to_string o
+  | Jmp _ -> "jmp"
+  | Br _ -> "br"
+  | Call _ -> "call"
+  | Ret _ -> "ret"
+  | Print _ -> "print"
+  | Nop -> "nop"
+  | Phi _ -> "phi"
+  | Speculate -> "speculate"
+  | Commit -> "commit"
+  | Guard _ -> "guard"
+  | Alloc _ -> "alloc"
+  | Free _ -> "free"
+  | Store _ -> "store"
+  | Load _ -> "load"
+  | PtrAdd _ -> "ptradd"
+               
