@@ -1,0 +1,4 @@
+(library
+  (name lvn)
+  (libraries ir core yojson ocamlgraph)
+  (preprocess (pps ppx_jane)))
