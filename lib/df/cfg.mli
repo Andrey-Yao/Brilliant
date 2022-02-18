@@ -19,14 +19,15 @@ module CFG: sig
                          and type E.t = Ver.t * Edg.t * Ver.t
                          and type E.label = Edg.t
 end
+                                     
+type block_t = string * (Instr.t Array.t)
 
-                                            
 type t = { graph: CFG.t;(*The control flow graph*)
            args: Instr.dest list;
            blocks: string list;(*Blocks in original order*)
            ret_type: Bril_type.t option;
            func_name: string; (*Name of function this cfg represents*)
-           name_to_instrs: Instr.t list String.Map.t;(*yeah*) }
+           name_to_instrs: block_t String.Map.t;(*yeah*) }
 
 
 val of_func: Func.t -> t

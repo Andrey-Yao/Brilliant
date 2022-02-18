@@ -1,29 +1,11 @@
 open! Core
 open Cfg
-
-
-module type Frame = sig
-  
-  type poset
-  type t = (poset * poset) String.Map.t
-  val top: poset
-  val meet: poset -> poset -> poset
-  val equal: poset -> poset -> bool
-  val transfer: poset -> Ir.Instr.t list -> poset
-  val optimize: Cfg.t -> t -> Cfg.t
-end
-
-
-module type DataFlow = sig
-  type t
-  val solve: Cfg.t -> t
-  val optimize: Cfg.t -> t -> Cfg.t
-end
+open Sig
 
 
 module Forward(F: Frame) = struct
 
-   type t = F.t
+   type t = (F.p * F.p) String.Map.t
   
   (**[work_forward funct wdata wlist] works on the head of [wlist] and returns
      updated [wdata] and [wlist]. Does nothing if [wlist] is empty*)
@@ -53,14 +35,12 @@ module Forward(F: Frame) = struct
       | [] -> wdata
       | _ -> helper(work_forward funct wdata wlist) in
     helper (initdata, initlist)
-
-  let optimize = F.optimize
 end
 
 
 module Backward(F: Frame) = struct
 
-  type t = F.t
+  type t = (F.p * F.p) String.Map.t
 
   (**[work_backward funct wdata wlist] works on the head of [wlist] and returns
      updated [wdata] and [wlist]. Does nothing if [wlist] is empty*)
@@ -90,6 +70,4 @@ module Backward(F: Frame) = struct
       | [] -> wdata
       | _ -> helper(work_backward funct wdata wlist) in
     helper (initdata, initlist)
-
-  let optimize = F.optimize
 end

@@ -2,9 +2,11 @@
 open! Core
 open! Common
 
+
 type dest = string * Bril_type.t [@@deriving compare, equal, sexp_of]
 type label = string [@@deriving compare, equal, sexp_of]
 type arg = string [@@deriving compare, equal, sexp_of]
+
 
 type t =
   | Label of label
@@ -26,7 +28,8 @@ type t =
   | Store of (arg * arg)
   | Load of (dest * arg)
   | PtrAdd of (dest * arg * arg)
-[@@deriving compare, equal, sexp_of]
+                [@@deriving compare, equal, sexp_of]
+
 
 let to_string =
   let dest_to_string (name, bril_type) = sprintf "%s: %s =" name (Bril_type.to_string bril_type) in
@@ -63,6 +66,7 @@ let to_string =
   | PtrAdd (dst, arg1, arg2) -> sprintf "%s ptradd %s %s" (dest_to_string dst) arg1 arg2
   | Free arg -> sprintf "free %s" arg
 
+
 let dest = function
   | Const (dest, _)
   | Binary (dest, _, _, _)
@@ -85,6 +89,7 @@ let dest = function
   | Free _
   | Store _ ->
     None
+
 
 let set_dest dest t : t option =
   match t with
@@ -180,6 +185,7 @@ let of_json json =
     | op -> failwithf "invalid op: %s" op () )
   | json -> failwithf "invalid label: %s" (json |> to_string) ()
 
+
 let to_json =
   let dest_to_json (name, bril_type) =
     [ ("dest", `String name); ("type", Bril_type.to_json bril_type) ]
@@ -263,7 +269,7 @@ let to_json =
 
 let opcode instr : string =
   match instr with
-  | Label _ -> failwith "Labels have no opcodes"
+  | Label _ -> "label"
   | Const _ -> "const"
   | Binary (_, o, _, _) -> Op.Binary.to_string o
   | Unary (_, o, _) -> Op.Unary.to_string o

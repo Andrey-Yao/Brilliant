@@ -1,4 +1,5 @@
 (library
   (name df)
   (libraries ir core yojson ocamlgraph)
-  (preprocess (pps ppx_jane)))
+  (preprocess (pps ppx_jane))
+  (modules_without_implementation sig))

@@ -1,29 +1,49 @@
 open! Core
-open Dataflow
+open Sig
 open Ir
+
 
 module ReachingDefinitionsF : Frame = struct
 
   module Strmap = String.Map
-  
-  type poset = Ir.Instr.t list Strmap.t
 
-  type t = (poset * poset) String.Map.t
+  type value = { block_name: string; instr_num: int }
+  [@@deriving compare, sexp]
+
+  module VS = Set.Make(struct
+                    type t = value [@@deriving compare, sexp][@@@end] end)
+
+  (**[p] is a map from names of defined [vars] to
+   sets of [(block_name, instruction)], where
+   [instruction] has [var] as [dest]*)
+  type p = VS.t Strmap.t
 
   let top = Strmap.empty
 
-  let meet = failwith "unimplemented"
+  let meet p1 p2 =
+    Strmap.fold
+      ~init:p2
+      ~f:(fun ~key ~data acc ->
+        match Strmap.find acc key with
+        | None -> Strmap.add_exn ~key ~data acc
+        | Some s ->
+           let union = VS.union data s in
+           Strmap.set ~key ~data:union acc)
+      p1
+                                  
+  let equal = Strmap.equal VS.equal
 
-  let equal = Strmap.equal (List.equal Instr.equal)
-
-  (*
-  let kills x instr =
-    match Instr.dest instr with
-    |
-
-    *)
-  let transfer x instr = failwith "unimplented"
-
-  let optimize = failwith "unimplemented"
+  let transfer p block =
+    Array.foldi
+      ~init:p
+      ~f:(fun i map inst ->
+        match Instr.dest inst with
+        | None -> map
+        | Some (key, _) ->
+           let data = VS.singleton {block_name=fst block; instr_num = i} in
+           Strmap.set ~key ~data map)
+      (snd block)
   
 end
+
+

@@ -16,13 +16,14 @@ end
 module CFG =
   Graph__.Persistent.Digraph.ConcreteBidirectionalLabeled(Ver)(Edg)
 
+type block_t = string * (Instr.t Array.t)
 
 type t = { graph: CFG.t;(*The control flow graph*)
            args: Instr.dest list;
            blocks: string list;(*Blocks in original order*)
            ret_type: Bril_type.t option;
            func_name: string; (*Name of function this cfg represents*)
-           name_to_instrs: Instr.t list String.Map.t;(*yeah*) }
+           name_to_instrs: block_t String.Map.t;(*yeah*) }
 
 
 (** [next_block instrs info i] returns [(instrs1, info1, i1)] where
@@ -55,7 +56,10 @@ let next_block (instrs: Instr.t list) (info: t) i: Instr.t list * t * int =
        blockify (h::curr) t g end in
   let blocks1 = info.blocks @ [name] in
   let block_rev, rest, g = blockify [] instrs info.graph in
-  let map1 = String.Map.add_exn ~key:name ~data:(List.rev block_rev) info.name_to_instrs in
+  let length = List.length block_rev in
+  let arr = Array.create ~len:length Instr.Nop in
+  List.iteri ~f:(fun i a -> Array.set arr (length - i - 1) a) block_rev; 
+  let map1 = String.Map.add_exn ~key:name ~data:(name, arr) info.name_to_instrs in
   let infoo = { info with blocks = blocks1; name_to_instrs = map1; graph = g } in
   rest, infoo, i1
        
@@ -76,3 +80,9 @@ let of_func (funct: Func.t) =
       func_name = funct.name;
       name_to_instrs = String.Map.empty } in
   process_instrs (funct.instructions, init_info, 1)
+
+
+(*
+let to_func (g: t) : Func.t =
+  let block_to_instr = 
+    *)
