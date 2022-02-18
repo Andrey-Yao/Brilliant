@@ -52,10 +52,9 @@ let local_value_number_once data instr =
   | [], Some d -> failwith "TODO"
   | _ , None -> begin
       match VM.find data.val_to_num {op; args;} with
-      | None ->
-      | Some -> 
-  match VM.find info.val_to_num {op; args;} with
-  | None -> 
+      | None -> failwith "TODO"
+      | Some _ -> failwith "TODO" end
+  | _ , Some d -> failwith "TODO"
 
 
 let local_value_number args block =

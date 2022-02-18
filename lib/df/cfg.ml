@@ -2,23 +2,42 @@ open! Core
 open Ir
 
 
-module Ver = struct
-  type t= string [@@deriving compare, equal, hash]
+module SM = String.Map
+
+
+(** Digraph *)
+module G = struct
+  
+  type edge = True | False | Jump | Next
+  
+  type t = 
+    { succs_map: (edge * string) list SM.t;
+      preds_map: (edge * string) list SM.t; }
+
+  (**adds edge [e]. Creates [src] and [dst] nodes if missing*)
+  let add_edge g ~src ~dst e =
+    let opt_to_lst = function None -> [] | Some l -> l in
+    let old_succs = SM.find g.succs_map src |> opt_to_lst in
+    let old_preds = SM.find g.preds_map dst |> opt_to_lst in
+    let ms = SM.set ~key:src ~data:((e, dst)::old_succs) g.succs_map in
+    let mp = SM.set ~key:dst ~data:((e, src)::old_preds) g.preds_map in
+    { succs_map = ms; preds_map = mp }
+  
+  let succs_e g n = SM.find_exn g.succs_map n
+  
+  let preds_e g n = SM.find_exn g.preds_map n
+  
+  let succs g n = succs_e g n |> List.map ~f:snd
+  
+  let preds g n = preds_e g n |> List.map ~f:snd
+  
+  let empty = { succs_map = SM.empty; preds_map = SM.empty; }
 end
 
-
-module Edg = struct
-  type t = True | False | Jump | Next [@@deriving compare]
-  let default : t = Next
-end
-
-
-module CFG =
-  Graph__.Persistent.Digraph.ConcreteBidirectionalLabeled(Ver)(Edg)
 
 type block_t = string * (Instr.t Array.t)
 
-type t = { graph: CFG.t;(*The control flow graph*)
+type t = { graph: G.t;(*The control flow graph*)
            args: Instr.dest list;
            blocks: string list;(*Blocks in original order*)
            ret_type: Bril_type.t option;
@@ -35,33 +54,27 @@ let next_block (instrs: Instr.t list) (info: t) i: Instr.t list * t * int =
   let name, i1 = match List.hd_exn instrs with
     | Label l -> l, i
     | _ ->  sprintf "__B%d" i, i + 1 in
+  (**The [curr] returned is reversed*)
   let rec blockify curr rest g =
-    let open CFG in
-    let src = V.create name in begin
+    let open G in
+    let src = name in begin
     match rest with
     | [] -> curr, rest, g
-    | Label l::_ ->
-       let e = E.create src Next (V.create l) in
-       curr, rest, add_edge_e g e
-    | Jmp l::t ->
-       let e = E.create src Jump (V.create l) in
-       curr, t, add_edge_e g e
+    | Label l as h::_ -> (*fix this case*)
+       h::curr, rest, add_edge ~src ~dst:l g Next
+    | Jmp l as h::t ->
+       h::curr, t, add_edge ~src ~dst:l g Jump
     | Br (_, l1, l2) as h::t ->
-       let et = E.create src True (V.create l1) in
-       let ef = E.create src False (V.create l2) in
-       h::curr, t, add_edge_e (add_edge_e g et) ef
-    | Ret _ as h::t ->
-       h::curr, t, g
-    | h::t ->
-       blockify (h::curr) t g end in
-  let blocks1 = info.blocks @ [name] in
+       let g1 = add_edge ~src ~dst:l1 g True in
+       let g2 = add_edge ~src ~dst:l2 g1 False in
+       h::curr, t, g2
+    | Ret _ as h::t -> h::curr, t, g
+    | h::t -> blockify (h::curr) t g end in
+  let order = info.blocks @ [name] in
   let block_rev, rest, g = blockify [] instrs info.graph in
-  let length = List.length block_rev in
-  let arr = Array.create ~len:length Instr.Nop in
-  List.iteri ~f:(fun i a -> Array.set arr (length - i - 1) a) block_rev; 
+  let arr = Array.of_list_rev block_rev in
   let map1 = String.Map.add_exn ~key:name ~data:(name, arr) info.name_to_instrs in
-  let infoo = { info with blocks = blocks1; name_to_instrs = map1; graph = g } in
-  rest, infoo, i1
+  rest, { info with blocks = order; name_to_instrs = map1; graph = g }, i1
        
 
 (** Updates [info] recursively *)
@@ -73,7 +86,7 @@ let rec process_instrs (instrs, info, i) =
 
 let of_func (funct: Func.t) =
   let init_info =
-    { graph = CFG.empty;
+    { graph = G.empty;
       args = funct.args;
       blocks = [];
       ret_type = funct.ret_type;
@@ -82,7 +95,4 @@ let of_func (funct: Func.t) =
   process_instrs (funct.instructions, init_info, 1)
 
 
-(*
-let to_func (g: t) : Func.t =
-  let block_to_instr = 
-    *)
+let to_func (g: t) : Func.t = failwith "TODO"

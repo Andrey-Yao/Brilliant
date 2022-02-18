@@ -1,28 +1,28 @@
 open! Core
 open Ir
 
-
-module Ver: sig
-  type t = string [@@deriving compare, equal, hash]
-end
+module SM = String.Map
 
 
-module Edg: sig
-  type t = True | False | Jump | Next [@@deriving compare]
-  val default: t
-end
 
+module G: sig
+  type edge = True | False | Jump | Next
+  type t =
+    { succs_map: (edge * string) list SM.t;
+      preds_map: (edge * string) list SM.t; }
 
-module CFG: sig
-  include Graph__.Sig.P with type V.t = Ver.t
-                         and type V.label = Ver.t
-                         and type E.t = Ver.t * Edg.t * Ver.t
-                         and type E.label = Edg.t
+  (**adds edge [e]. Creates [src] and [dst] nodes if missing*)
+  (* val add_edge : t -> ~src:string ~dst:string -> edge -> t *)
+  val succs_e : t -> string -> (edge * string) list
+  val preds_e : t -> string -> (edge * string) list
+  val succs : t -> string -> string list
+  val preds : t -> string -> string list
+  val empty : t
 end
                                      
 type block_t = string * (Instr.t Array.t)
 
-type t = { graph: CFG.t;(*The control flow graph*)
+type t = { graph: G.t;(*The control flow graph*)
            args: Instr.dest list;
            blocks: string list;(*Blocks in original order*)
            ret_type: Bril_type.t option;
@@ -31,3 +31,5 @@ type t = { graph: CFG.t;(*The control flow graph*)
 
 
 val of_func: Func.t -> t
+
+val to_func: t -> Func.t

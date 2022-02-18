@@ -8,6 +8,6 @@ module Op = Op
 
 type t = Func.t list [@@deriving compare, equal, sexp_of]
 
-val from_json : Yojson.Basic.t -> t
+val of_json : Yojson.Basic.t -> t
 val to_json : t -> Yojson.Basic.t
 val to_string : t -> string

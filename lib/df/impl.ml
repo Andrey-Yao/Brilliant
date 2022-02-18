@@ -3,9 +3,11 @@ open Sig
 open Ir
 
 
+module Strmap = String.Map
+
+
 module ReachingDefinitionsF : Frame = struct
 
-  module Strmap = String.Map
 
   type value = { block_name: string; instr_num: int }
   [@@deriving compare, sexp]
@@ -45,5 +47,15 @@ module ReachingDefinitionsF : Frame = struct
       (snd block)
   
 end
+
+
+(*
+
+module AvailableCopiesF: Frame = struct
+
+
+end
+
+                                 *)
 
 
