@@ -15,24 +15,25 @@ module G = struct
     { succs_map: (edge * string) list SM.t;
       preds_map: (edge * string) list SM.t; }
 
-  (**adds edge [e]. Creates [src] and [dst] nodes if missing*)
-  let add_edge g ~src ~dst e =
-    let opt_to_lst = function None -> [] | Some l -> l in
-    let old_succs = SM.find g.succs_map src |> opt_to_lst in
-    let old_preds = SM.find g.preds_map dst |> opt_to_lst in
-    let ms = SM.set ~key:src ~data:((e, dst)::old_succs) g.succs_map in
-    let mp = SM.set ~key:dst ~data:((e, src)::old_preds) g.preds_map in
-    { succs_map = ms; preds_map = mp }
+  let empty = { succs_map = SM.empty; preds_map = SM.empty; }
   
-  let succs_e g n = SM.find_exn g.succs_map n
+  let opt_to_lst = function None -> [] | Some l -> l
   
-  let preds_e g n = SM.find_exn g.preds_map n
+  let succs_e g n = SM.find g.succs_map n |> opt_to_lst
+  
+  let preds_e g n = SM.find g.preds_map n |> opt_to_lst
   
   let succs g n = succs_e g n |> List.map ~f:snd
   
   let preds g n = preds_e g n |> List.map ~f:snd
+
+  let add_edge g ~src ~dst e =
+    let old_succs = succs_e g src in
+    let old_preds = preds_e g dst in
+    let ms = SM.set ~key:src ~data:((e, dst)::old_succs) g.succs_map in
+    let mp = SM.set ~key:dst ~data:((e, src)::old_preds) g.preds_map in
+    { succs_map = ms; preds_map = mp }
   
-  let empty = { succs_map = SM.empty; preds_map = SM.empty; }
 end
 
 
@@ -53,7 +54,7 @@ let next_block (instrs: Instr.t list) (info: t) (i: int ref): Instr.t list * t =
   let open Instr in
   let name = match List.hd instrs with
     | Some (Label l) -> l
-    | _ -> sprintf "__B%d" (i:=!i+1; !i) in
+    | _ -> sprintf "_B%d" (i:=!i+1; !i) in
   print_endline name;
   (*The [curr] returned is in reversed order*)
   let rec step curr rest g =
@@ -110,3 +111,16 @@ let to_func (g: t) : Func.t =
     args = g.args;
     ret_type = g.ret_type;
     instructions = instrs; }
+
+
+let to_dot_names_only out g =
+  let buf = Buffer.create 20 in
+  Buffer.add_string buf "graph {\n";
+  List.iter g.order ~f:(fun u ->
+      let succs = G.succs g.graph u in
+      List.iter succs ~f:(fun v ->
+          u ^ " -> " ^ v ^ "\n"|>
+            Buffer.add_string buf));
+  Buffer.add_string buf "\n}";
+  buf |> Buffer.contents |> Out_channel.output_string out
+  

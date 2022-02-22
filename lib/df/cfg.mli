@@ -35,3 +35,5 @@ type t = { graph: G.t;(*The control flow graph*)
 val of_func: Func.t -> t
 
 val to_func: t -> Func.t
+
+val to_dot_names_only: out_channel -> t -> unit

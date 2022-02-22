@@ -1,0 +1,6 @@
+graph {
+_B1 -> while
+while -> continue
+continue -> endwhile
+
+}
