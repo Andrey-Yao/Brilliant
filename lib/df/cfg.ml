@@ -62,8 +62,6 @@ let next_block (instrs: Instr.t list) (info: t) (i: int ref): Instr.t list * t =
     let src = name in begin
     match rest with
     | [] -> curr, rest, g
-    | h::((Label blk)::_ as rst)->
-       h::curr, rst, add_edge ~src ~dst:blk g Next
     (*Next three cases are terminators*)
     | Jmp l as h::t -> 
        h::curr, t, add_edge ~src ~dst:l g Jump
@@ -72,6 +70,8 @@ let next_block (instrs: Instr.t list) (info: t) (i: int ref): Instr.t list * t =
        let g2 = add_edge ~src ~dst:l2 g1 False in
        h::curr, t, g2
     | Ret _ as h::t -> h::curr, t, g
+    | h::((Label blk)::_ as rst)->
+       h::curr, rst, add_edge ~src ~dst:blk g Next
     | h::t -> step (h::curr) t g end in
   let curr, rest, g = step [] instrs info.graph in
   let arr = Array.of_list_rev curr in
@@ -83,9 +83,8 @@ let next_block (instrs: Instr.t list) (info: t) (i: int ref): Instr.t list * t =
 let rec process_instrs instrs info i =
   match instrs with
   | [] -> info
-  | _ ->
-     let res = next_block instrs info i in
-     process_instrs (fst res) (snd res) i
+  | _ -> let res = next_block instrs info i in
+         process_instrs (fst res) (snd res) i
      
 
 let of_func (funct: Func.t) =
@@ -113,14 +112,42 @@ let to_func (g: t) : Func.t =
     instructions = instrs; }
 
 
-let to_dot_names_only out g =
-  let buf = Buffer.create 20 in
-  Buffer.add_string buf "graph {\n";
+let block_to_dot g b =
+  let buf = Buffer.create 10 in
+  Buffer.add_char buf '{';
+  Buffer.add_string buf b;
+  let arr = SM.find_exn g.map b |> snd in
+  Array.iter arr ~f:(fun instr ->
+      Buffer.add_char buf '|';
+      Buffer.add_string buf (Instr.to_string instr);
+    );
+  Buffer.add_char buf '}';
+  Buffer.contents buf
+
+
+let to_dot ~names_only oc g =
+  let open Out_channel in
+  let prefix = g.func_name ^ "_69_420_" in
+  output_string oc (sprintf "subgraph cluster_%s {\n" prefix);
+  output_string oc (sprintf "label = \"%s\"\n" g.func_name);
+  List.iter g.order ~f:(fun b ->
+      let node =
+        if names_only then (sprintf "%s%s [label=\"%s\"];\n" prefix b b)
+        else (sprintf "%s%s [label=\"%s\" shape=\"record\"];\n" prefix b (block_to_dot g b)) in
+      output_string oc node;);
   List.iter g.order ~f:(fun u ->
-      let succs = G.succs g.graph u in
-      List.iter succs ~f:(fun v ->
-          u ^ " -> " ^ v ^ "\n"|>
-            Buffer.add_string buf));
-  Buffer.add_string buf "\n}";
-  buf |> Buffer.contents |> Out_channel.output_string out
+      u |> G.succs_e g.graph
+      |> List.iter ~f:(fun p ->
+             let edge_lbl = 
+               match p with
+               | (True, _) -> "[color=\"blue\"]"
+               | (False, _) -> "[color=\"red\"]"
+               | _ -> "" in
+             output_string oc
+               (sprintf "%s%s -> %s%s %s;\n" prefix u prefix (snd p) edge_lbl)));
+  output_string oc "}"
   
+  
+(*
+let to_dot ~uniq oc g =
+ *)

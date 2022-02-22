@@ -36,4 +36,4 @@ val of_func: Func.t -> t
 
 val to_func: t -> Func.t
 
-val to_dot_names_only: out_channel -> t -> unit
+val to_dot: names_only:bool -> out_channel -> t -> unit
