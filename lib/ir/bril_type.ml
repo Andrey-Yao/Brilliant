@@ -2,11 +2,7 @@
 
 open! Core
 
-type t =
-  | IntType
-  | BoolType
-  | FloatType
-  | PtrType of t
+type t = IntType | BoolType | FloatType | PtrType of t
 [@@deriving compare, equal, hash, sexp_of]
 
 let rec of_json =
@@ -18,9 +14,7 @@ let rec of_json =
   | `Assoc [ ("ptr", inner) ] -> PtrType (of_json inner)
   | json -> failwithf "invalid type: %s" (json |> to_string) ()
 
-let of_json_opt = function
-  | `Null -> None
-  | json -> Some (of_json json)
+let of_json_opt = function `Null -> None | json -> Some (of_json json)
 
 let rec to_json = function
   | IntType -> `String "int"

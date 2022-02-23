@@ -2,11 +2,9 @@
 open! Core
 open! Common
 
-
 type dest = string * Bril_type.t [@@deriving compare, equal, sexp_of]
 type label = string [@@deriving compare, equal, sexp_of]
 type arg = label
-
 
 type t =
   | Label of label
@@ -29,7 +27,6 @@ type t =
   | Load of (dest * arg)
   | PtrAdd of (dest * arg * arg)
 [@@deriving compare, equal, sexp_of]
-
 
 val dest : t -> dest option
 val set_dest : dest -> t -> t option

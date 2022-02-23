@@ -1,11 +1,7 @@
 (*modified from https://github.com/sampsyo/bril/tree/main/bril-ocaml*)
 open! Core
 
-type t =
-  | IntType
-  | BoolType
-  | FloatType
-  | PtrType of t
+type t = IntType | BoolType | FloatType | PtrType of t
 [@@deriving compare, equal, hash, sexp_of]
 
 val of_json : Yojson.Basic.t -> t

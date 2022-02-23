@@ -1,15 +1,5 @@
 *~
 
-*.annot
-*.cmo
-*.cma
-*.cmi
-*.a
-*.o
-*.cmx
-*.cmxs
-*.cmxa
-
 # ocamlbuild working directory
 _build/
 
@@ -39,10 +29,5 @@ _opam/*~
 *.cmxs
 *.cmxa
 
-# ocamlbuild working directory
-_build/
-
-# ocamlbuild targets
-*.byte
-*.native
+.ocamlformat
 

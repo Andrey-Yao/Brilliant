@@ -1,5 +1,3 @@
 open Dataflow
 open Impl
-
-
-module ReachingDefinitions = Forward(ReachingDefinitionsF)
+module ReachingDefinitions = Forward (ReachingDefinitionsF)

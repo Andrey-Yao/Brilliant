@@ -3,6 +3,7 @@ open! Core
 
 module Make (M : sig
   type t [@@deriving compare, equal, hash, sexp_of]
+
   val by_name : (string * t) list
 end) =
 struct
@@ -10,7 +11,9 @@ struct
 
   let is_op = List.Assoc.mem by_name ~equal:String.equal
   let of_string = List.Assoc.find_exn by_name ~equal:String.equal
-  let to_string = List.map by_name ~f:(fun (a, b) -> (b, a)) |> List.Assoc.find_exn ~equal
+
+  let to_string =
+    List.map by_name ~f:(fun (a, b) -> (b, a)) |> List.Assoc.find_exn ~equal
 end
 
 module Binary = struct
@@ -77,13 +80,17 @@ module Binary = struct
     | Gt -> Const.Bool (n1 > n2)
     | Le -> Const.Bool (n1 <= n2)
     | Ge -> Const.Bool (n1 >= n2)
-    | _ -> failwithf "[Op.Binary.fold]: type mismatch for operation %s %d %d" (to_string op) n1 n2 ()
+    | _ ->
+        failwithf "[Op.Binary.fold]: type mismatch for operation %s %d %d"
+          (to_string op) n1 n2 ()
 
   let fold_bool op b1 b2 =
     match op with
     | And -> Const.Bool (b1 && b2)
     | Or -> Const.Bool (b1 || b2)
-    | _ -> failwithf "[Op.Binary.fold]: type mismatch for operation %s %b %b" (to_string op) b1 b2 ()
+    | _ ->
+        failwithf "[Op.Binary.fold]: type mismatch for operation %s %b %b"
+          (to_string op) b1 b2 ()
 
   (* TODO: divide by 0???????*)
   let fold_float op f1 f2 =
@@ -92,32 +99,28 @@ module Binary = struct
     | Fsub -> Const.Float (f1 -. f2)
     | Fmul -> Const.Float (f1 *. f2)
     | Fdiv -> Const.Float (f1 /. f2)
-    | Feq -> Const.Bool (Float.(=) f1 f2)
-    | Flt -> Const.Bool (Float.(<) f1 f2)
-    | Fgt -> Const.Bool (Float.(>) f1 f2)
-    | Fle -> Const.Bool (Float.(<=) f1 f2)
-    | Fge -> Const.Bool (Float.(>=) f1 f2)
-    | _ -> failwithf "[Op.Binary.fold]: type mismatch for operation %s %f %f" (to_string op) f1 f2 ()
-  
+    | Feq -> Const.Bool (Float.( = ) f1 f2)
+    | Flt -> Const.Bool (Float.( < ) f1 f2)
+    | Fgt -> Const.Bool (Float.( > ) f1 f2)
+    | Fle -> Const.Bool (Float.( <= ) f1 f2)
+    | Fge -> Const.Bool (Float.( >= ) f1 f2)
+    | _ ->
+        failwithf "[Op.Binary.fold]: type mismatch for operation %s %f %f"
+          (to_string op) f1 f2 ()
+
   let fold t v1 v2 =
     match (v1, v2) with
-    | (Const.Int n1, Const.Int n2) -> fold_int t n1 n2
-    | (Const.Bool b1, Const.Bool b2) -> fold_bool t b1 b2
-    | (Const.Float f1, Const.Float f2) -> fold_float t f1 f2
+    | Const.Int n1, Const.Int n2 -> fold_int t n1 n2
+    | Const.Bool b1, Const.Bool b2 -> fold_bool t b1 b2
+    | Const.Float f1, Const.Float f2 -> fold_float t f1 f2
     | _ ->
-      failwithf
-        "[Op.Binary.fold]: type mismatch between arguments %s and %s"
-        (Const.to_string v1)
-        (Const.to_string v2)
-        ()
+        failwithf "[Op.Binary.fold]: type mismatch between arguments %s and %s"
+          (Const.to_string v1) (Const.to_string v2) ()
 end
 
 module Unary = struct
   module T = struct
-    type t =
-      | Not
-      | Id
-    [@@deriving compare, equal, hash, sexp_of]
+    type t = Not | Id [@@deriving compare, equal, hash, sexp_of]
 
     let by_name = [ ("not", Not); ("id", Id) ]
   end
@@ -127,12 +130,9 @@ module Unary = struct
 
   let fold t v =
     match (t, v) with
-    | (Not, Const.Bool b) -> Const.Bool (not b)
-    | (Id, _) -> v
+    | Not, Const.Bool b -> Const.Bool (not b)
+    | Id, _ -> v
     | _ ->
-      failwithf
-        "[Op.Unary.fold]: type mismatch for operation %s %s"
-        (to_string t)
-        (Const.to_string v)
-        ()
+        failwithf "[Op.Unary.fold]: type mismatch for operation %s %s"
+          (to_string t) (Const.to_string v) ()
 end
