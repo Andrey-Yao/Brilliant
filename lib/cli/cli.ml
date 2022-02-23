@@ -8,10 +8,12 @@ let to_dot_file ~name ~cfgs =
   let open Stdio__Out_channel in
   let fout = create (name ^ ".dot") in
   output_string fout ("digraph{\n\
+                       fontname=\"sans-serif\"\n\
                        fontsize=\"24\"\n\
                        penwidth=1\n\
-                       node[fontsize=\"20\"]\n\
-                       node[shape=\"box\"]\n\
+                       node[fontsize=\"20\" \
+                       shape=\"box\" \
+                       fontname=\"sans-serif\"]\n\
                        label=\"" ^ name ^ "\"\n");
   List.iter ~f:(fun g -> Cfg.to_dot ~names_only:false fout g;
                          newline fout) cfgs;
