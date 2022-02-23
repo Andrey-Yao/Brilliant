@@ -5,7 +5,7 @@ open Df
 
 let to_dot_file ~name ~cfgs =
   let open Stdio__Out_channel in
-  let fout = create (name ^ ".dot") in
+  let fout = create (name ^ "_cfg.dot") in
   output_string fout
     ("digraph{\n\
       fontname=\"sans-serif\"\n\

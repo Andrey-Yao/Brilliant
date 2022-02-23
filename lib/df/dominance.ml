@@ -3,32 +3,39 @@ open Cfg
 module SM = String.Map
 module SS = String.Set
 
-type set = Sett of SS.t | All
-type t_abs = set SM.t
-type t = set SM.t
+type t = SS.t SM.t
 
-(**Simulates the initialization of dominators to
-   all the blocks*)
-let extract = function None -> All | Some ss -> ss
+module Sset = struct
 
-let union s1 s2 =
-  match (s1, s2) with
-  | All, _ -> All
-  | _, All -> All
-  | Sett ss1, Sett ss2 -> Sett (SS.union ss1 ss2)
+  type t = Sett of SS.t | All
 
-let inter s1 s2 =
-  match (s1, s2) with
-  | All, s -> s
-  | s, All -> s
-  | Sett ss1, Sett ss2 -> Sett (SS.inter ss1 ss2)
+  (**Simulates the initialization of dominators to
+     all the blocks*)
+  let extract = function None -> All | Some ss -> ss
 
-let equal s1 s2 =
-  match (s1, s2) with
-  | All, All -> true
-  | Sett ss1, Sett ss2 -> SS.equal ss1 ss2
-  | _ -> false
+  let union s1 s2 =
+    match (s1, s2) with
+    | All, _ -> All
+    | _, All -> All
+    | Sett ss1, Sett ss2 -> Sett (SS.union ss1 ss2)
 
+  let inter s1 s2 =
+    match (s1, s2) with
+    | All, s -> s
+    | s, All -> s
+    | Sett ss1, Sett ss2 -> Sett (SS.inter ss1 ss2)
+
+  let equal s1 s2 =
+    match (s1, s2) with
+    | All, All -> true
+    | Sett ss1, Sett ss2 -> SS.equal ss1 ss2
+    | _ -> false
+end
+
+type s = Sset.t SM.t
+
+(**Gives the reverse postorder of [graph] starting from 
+ [hd order] as a list. Unreachable nodes are omitted *)
 let reverse_post_order ~(order : string list) ~(graph : G.t) =
   (*Starts from [node] as root and does a postorder traversal
     while prepending elements to stack, while keeping track of
@@ -43,19 +50,23 @@ let reverse_post_order ~(order : string list) ~(graph : G.t) =
       in
       (SS.add sett node, node :: stck)
   in
-  let rec trav_list (set, stack) rest =
+  match order with
+  | [] -> []
+  | start :: _ -> build start (SS.empty, []) |> snd
+  (*let rec trav_list (set, stack) rest =
     match rest with
     | [] -> (set, stack)
     | h :: _ ->
         let se, st = build h (set, stack) in
         trav_list (se, st) (List.filter ~f:(fun n -> SS.mem se n |> not) rest)
   in
-  trav_list (SS.empty, []) order
+  trav_list (SS.empty, []) order *)
 
 (**Performs a single update in the dominator set for the 
    block [b]. Returns [None] if no change happened*)
-let step_dom dom_map g b : t option =
-  let doms_old = SM.find dom_map b |> extract in
+let step_dom (dom_map: s) g b: s option =
+  let open Sset in
+  let doms_old = b |> SM.find dom_map |> extract in
   let ss =
     b |> G.preds g
     |> List.fold ~init:All ~f:(fun accum e ->
@@ -65,6 +76,21 @@ let step_dom dom_map g b : t option =
   if equal doms_old doms_new then None
   else SM.set ~key:b ~data:doms_new dom_map |> Option.return
 
-let find_dominators blocks (g : G.t) =
-  ignore g;
-  ignore blocks
+
+(**Finds the dominators of each block given reverse postorder
+   [rpo] and graph [g]. Omits unreachable blocks*)
+let dominators_map rpo (g : G.t) =
+  let folder (map, same) blk =
+    match step_dom map g blk with
+    | None -> (map, same)
+    | Some m -> (m, false)
+  in
+  (*Repeats till convergence*)
+  let rec converge (map, same) =
+    if (same) then (map, true)
+    else converge (List.fold ~f:folder ~init:(map, true) rpo)
+  in
+  converge (SM.empty, false) |> fst
+
+
+let to_dot oc map blocks =
