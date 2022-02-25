@@ -3,6 +3,7 @@ open Yojson
 open Ir
 open Cfg
 
+
 let to_dot_file ~name ~cfgs =
   let open Stdio__Out_channel in
   let fout = create (name ^ ".dot") in
@@ -11,6 +12,15 @@ let to_dot_file ~name ~cfgs =
       Cflow.to_dot ~names_only:false fout g;
       newline fout)
     cfgs;
+  close fout
+
+let to_dot_submissive ~name ~(cfgs: Cflow.t list) =
+  let open Stdio__Out_channel in
+  let fout = create (name ^ "_sub.dot") in
+  List.iter cfgs ~f:(fun cfg ->
+      let doms = Dominance.dominators cfg in
+      let sub_tree = Dominance.submissive_tree cfg.order doms in
+      Dominance.to_dot fout sub_tree cfg.order cfg.func_name;);
   close fout
 
 let process_single ~lvn ~outs ~srcpath ~outpath ~file =
@@ -22,7 +32,8 @@ let process_single ~lvn ~outs ~srcpath ~outpath ~file =
   let name = String.chop_suffix_exn file ~suffix:".json" in
   let prog = Bril.of_json yojson in
   let cfgs = List.map prog ~f:Cflow.of_func in
-  to_dot_file ~name:(out_prefix ^ name) ~cfgs;
+  (* to_dot_file ~name:(out_prefix ^ name) ~cfgs; *)
+  (* to_dot_submissive ~name ~cfgs; *)
   Basic.to_channel Out_channel.stdout yojson;
   Basic.to_file (out_prefix ^ name ^ "_opt.json") yojson
 
@@ -36,8 +47,9 @@ let process ~lvn ~outs ~srcpath ~outpath ~files =
      let yojson = Basic.from_channel (In_channel.stdin) in
      let prog = Bril.of_json yojson in
      let cfgs = List.map prog ~f:Cflow.of_func in
-     let yojson2 = List.map cfgs ~f:Cflow.to_func |> Bril.to_json in
-     Basic.to_channel Out_channel.stdout yojson2
+     to_dot_submissive ~name:"tmp" ~cfgs;
+     let yojson2 = List.map cfgs ~f:Cflow.to_func |> Bril.to_json in ()
+  (*   Basic.to_channel Out_channel.stdout yojson2 *)
 
  
 let command =

@@ -13,58 +13,53 @@ let reverse_post_order ~(order : string list) ~(graph : Graph.t) =
   (*Starts from [node] as root and does a postorder traversal
     while prepending elements to stack, while keeping track of
     which nodes have been visited via [set]*)
-  let rec build node (set, stack) =
-    if SS.mem set node then (set, stack)
-    else
-      let sett, stck =
-        List.fold ~init:(set, stack)
-          ~f:(fun (se, st) n -> build n (se, st))
-          (Graph.succs graph node)
-      in
-      (SS.add sett node, node :: stck)
-  in
+  let stack = Stack.create () in
+  let rec build set node : SS.t =
+    if SS.mem set node then set
+    else (let tmp = List.fold
+            ~init:(SS.add set node)
+            ~f:(fun se n -> build se n)
+            (Graph.succs graph node) in
+          Stack.push stack node; tmp) in
   match order with
   | [] -> []
-  | start :: _ -> build start (SS.empty, []) |> snd
-  (*let rec trav_list (set, stack) rest =
-    match rest with
-    | [] -> (set, stack)
-    | h :: _ ->
-        let se, st = build h (set, stack) in
-        trav_list (se, st) (List.filter ~f:(fun n -> SS.mem se n |> not) rest)
-  in
-  trav_list (SS.empty, []) order *)
+  | entry :: _ ->
+     let _: SS.t = build SS.empty entry in
+     Stack.to_list stack
 
 (**Performs a single update in the dominator set for the 
    block [b] from [doms]. Returns [None] if no change happened.
    What are you doing, step dom?*)
-let step_dom (doms: t) all g b: t option =
+let step_dom (doms:t) (all:SS.t) (g:Graph.t) (b:string): t option =
   let doms_b_old = b |> SM.find doms |> extract all in
-  let ss =
-    b |> Graph.preds g
-    |> List.fold ~init:all ~f:(fun accum e ->
-           e |> SM.find doms |> extract all |> SS.inter accum)
+  let ss = match Graph.preds g b with
+    | [] -> SS.empty
+    | l -> l |> List.fold ~init:all ~f:(fun accum p ->
+           p |> SM.find doms |> extract all |> SS.inter accum)
   in
-  let doms_b_new = SS.union ss (SS.singleton b) in
+  let doms_b_new = SS.add ss b in
+  SS.equal doms_b_new doms_b_old |> string_of_bool |> print_endline;
   if SS.equal doms_b_old doms_b_new then None
   else SM.set ~key:b ~data:doms_b_new doms |> Option.return
 
 
 (**Finds the dominators of each block given reverse postorder
    [rpo] and graph [g]. Omits unreachable blocks*)
-let dominators rpo (g : Graph.t) =
+let dominators (g : Cflow.t) =
+  let rpo = reverse_post_order ~order:g.order ~graph:g.graph in
   let all = SS.of_list rpo in
   let folder (map, same) b =
-    match step_dom map all g b with
+    print_endline b;
+    match step_dom map all g.graph b with
     | None -> (map, same)
     | Some m -> (m, false)
   in
   (*Repeats till convergence*)
   let rec converge (map, same) =
-    if (same) then (map, true)
+    if (same) then map
     else converge (List.fold ~f:folder ~init:(map, true) rpo)
   in
-  converge (SM.empty, false) |> fst
+  converge (SM.empty, false)
 
 
 (**[invert blocks doms] gives the submissive map of blocks.
@@ -104,18 +99,28 @@ let submissive_tree blocks (doms: t) : t =
     blocks
 
 
-(*
-let to_dot oc map blocks func_name =
+let format =
+  "fontname=\"Times\"\n\
+   fontsize=\"24\"\n\
+   penwidth=1\n\
+   node[fontsize=\"20\" shape=\"box\" fontname=\"Times\"]\n"
+
+
+let to_dot oc (rel: t) blocks func_name =
   let open Out_channel in
   let print = output_string oc in
-  let print_children n =
-    match SM.find map n with
-    | None -> ()
-    | Some (Sset d)-> 
+  let print_children n = begin
+      match SM.find rel n with
+      | None -> ()
+      | Some set ->
+         SS.iter set
+         ~f:(fun e -> sprintf "\"%s\" -> \"%s\"\n" n e |> print)
+    end in
   print ("digraph {\n");
-  print "subgraph cluster_0 {";
+  print format;
+  print "subgraph cluster_0 {\n";
   print (sprintf "label = \"%s\"\n" func_name);
   List.iter blocks ~f:(fun b ->
-      sprintf "%s [label=\"%s\"];\n" b b |> print;);
-  
- *)
+      sprintf "\"%s\" [label=\"%s\"];\n" b b |> print;);
+  List.iter blocks ~f:print_children;
+  print "}}\n"
