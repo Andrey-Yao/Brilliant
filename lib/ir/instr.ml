@@ -151,7 +151,9 @@ let of_json json =
             match json |> member "type" |> Bril_type.of_json with
             | IntType -> Const.Int (json |> member "value" |> to_int)
             | BoolType -> Const.Bool (json |> member "value" |> to_bool)
-            | FloatType -> Const.Float (json |> member "value" |> to_float)
+            | FloatType ->
+               let cv = json |> member "value" in
+               Const.Float (try to_float cv with _ -> cv |> to_int |> float_of_int)
             | PtrType _ -> failwith "pointer is not supported in constants"
           in
           Const (dest (), const)
@@ -275,7 +277,7 @@ let to_json =
   | Alloc (dest, arg) -> build_op ~op:"alloc" ~args:[ arg ] ~dest ()
   | Free arg -> build_op ~op:"free" ~args:[ arg ] ()
   | Load (dest, arg) -> build_op ~op:"load" ~args:[ arg ] ~dest ()
-  | Store (arg1, arg2) -> build_op ~op:"load" ~args:[ arg1; arg2 ] ()
+  | Store (arg1, arg2) -> build_op ~op:"store" ~args:[ arg1; arg2 ] ()
   | PtrAdd (dest, arg1, arg2) ->
       build_op ~op:"ptradd" ~args:[ arg1; arg2 ] ~dest ()
 

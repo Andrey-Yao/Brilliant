@@ -1,5 +1,3 @@
-open Ir
-
 module type Frame = sig
   type p
 
