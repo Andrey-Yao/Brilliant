@@ -7,8 +7,9 @@ module Forward (F : Frame) = struct
 
   (**[work_forward funct wdata wlist] works on the head of [wlist] and returns
      updated [wdata] and [wlist]. Does nothing if [wlist] is empty*)
-  let work_forward (funct : Cfg.t) (wdata : t) (wlist : string list) =
+  let work_forward (funct : Cflow.t) (wdata : t) (wlist : string list) =
     let getdata = String.Map.find_exn wdata in
+    let open Cflow in
     match wlist with
     | [] -> (wdata, wlist)
     | b :: rest ->
@@ -27,7 +28,7 @@ module Forward (F : Frame) = struct
         let wdata_new = String.Map.set ~key:b ~data:(inb, new_outb) wdata in
         (wdata_new, wlist_new)
 
-  let solve (funct : Cfg.t) : t =
+  let solve (funct : Cflow.t) : t =
     let initlist = funct.order in
     let initdata =
       List.fold
@@ -47,8 +48,9 @@ module Backward (F : Frame) = struct
 
   (**[work_backward funct wdata wlist] works on the head of [wlist] and returns
      updated [wdata] and [wlist]. Does nothing if [wlist] is empty*)
-  let work_backward (funct : Cfg.t) (wdata : t) (wlist : string list) =
+  let work_backward (funct : Cflow.t) (wdata : t) (wlist : string list) =
     let getdata = String.Map.find_exn wdata in
+    let open Cflow in
     match wlist with
     | [] -> (wdata, wlist)
     | b :: rest ->
@@ -66,7 +68,7 @@ module Backward (F : Frame) = struct
         let wdata_new = String.Map.set ~key:b ~data:(outb, new_inb) wdata in
         (wdata_new, wlist_new)
 
-  let solve (funct : Cfg.t) : t =
+  let solve (funct : Cflow.t) : t =
     let initlist = funct.order in
     let initdata =
       List.fold

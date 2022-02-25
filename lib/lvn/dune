@@ -1,5 +1,5 @@
 (library
  (name lvn)
- (libraries ir core yojson)
+ (libraries ir core)
  (preprocess
   (pps ppx_jane)))

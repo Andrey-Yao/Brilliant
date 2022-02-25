@@ -1,5 +1,5 @@
 (library
  (name cli)
- (libraries ir df lvn core yojson)
+ (libraries ir df lvn cfg core)
  (preprocess
   (pps ppx_jane)))

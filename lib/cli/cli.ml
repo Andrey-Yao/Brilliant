@@ -2,32 +2,32 @@ open! Core
 open Yojson
 open Ir
 open Df
+open Cfg
 
 let to_dot_file ~name ~cfgs =
   let open Stdio__Out_channel in
-  let fout = create (name ^ "_cfg.dot") in
-  output_string fout
-    ("digraph{\n\
-      fontname=\"sans-serif\"\n\
-      fontsize=\"24\"\n\
-      penwidth=1\n\
-      node[fontsize=\"20\" shape=\"box\" fontname=\"sans-serif\"]\n\
-      label=\"" ^ name ^ "\"\n");
+  let fout = create (name ^ ".dot") in
   List.iter
     ~f:(fun g ->
-      Cfg.to_dot ~names_only:false fout g;
+      Cflow.to_dot ~names_only:false fout g;
       newline fout)
     cfgs;
-  output_string fout "}";
   close fout
 
-let process ~lvn ~outs ~srcpath ~outpath ~file =
-  let yojson = Basic.from_file file in
-  let name = String.chop_suffix_exn file ~suffix:".json" in
-  let prog = Bril.of_json yojson in
-  let cfgs = List.map prog ~f:Cfg.of_func in
-  to_dot_file ~name ~cfgs;
-  Basic.to_file ("opt_" ^ file) yojson
+let process ~lvn ~outs ~srcpath ~outpath ~files =
+  List.iter files
+    ~f:(fun f ->
+      let in_prefix = match srcpath with | None -> "" | Some p -> p in
+      let out_prefix = match outpath with | None -> "" | Some p -> p in
+      print_endline out_prefix;
+      let in_file = in_prefix ^ f in
+      let yojson = Basic.from_file in_file in
+      let name = String.chop_suffix_exn f ~suffix:".json" in
+      let prog = Bril.of_json yojson in
+      let cfgs = List.map prog ~f:Cflow.of_func in
+      to_dot_file ~name:(out_prefix ^ name) ~cfgs;
+      Basic.to_channel Out_channel.stdout yojson;
+      Basic.to_file (out_prefix ^ name ^ "_opt.json") yojson)
 
 let command =
   Core.Command.basic ~summary:"Brilliant, the compiler optimizer for BRIL"
@@ -47,5 +47,5 @@ let command =
       and srcpath =
         flag "-S" (optional string)
           ~doc:"<path> Specify where to find input source files"
-      and file = anon ("filename" %: Core.Filename.arg_type) in
-      fun () -> process ~lvn ~outs ~srcpath ~outpath ~file)
+      and files = anon (sequence ("filename" %: Core.Filename.arg_type)) in
+      fun () -> process ~lvn ~outs ~srcpath ~outpath ~files)

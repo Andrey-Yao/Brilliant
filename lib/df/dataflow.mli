@@ -1,5 +1,4 @@
 open! Core
-open Cfg
 open Sig
 
 module Forward : functor (F : Frame) ->
