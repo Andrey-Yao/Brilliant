@@ -6,8 +6,10 @@ module G = Graph
 
 type block_t = string * Instr.t Array.t
 
+type edge = True | False | Jump | Next
+
 type t = {
-  graph : G.t; (*The control flow graph*)
+  graph : edge G.t; (*The control flow graph*)
   args : Instr.dest list;
   order : string list; (*Blocks in original order*)
   ret_type : Bril_type.t option;
@@ -98,39 +100,19 @@ let block_to_dot g b =
   Buffer.contents buf
 
 
-let format =
-  "fontname=\"Times\"\n\
-   fontsize=\"24\"\n\
-   penwidth=1\n\
-   node[fontsize=\"20\" shape=\"box\" fontname=\"Times\"]\n"
-
-
 let to_dot ~names_only oc g =
-  let open Out_channel in
-  let print = output_string oc in
-  print ("digraph {\n" ^ format);
-  print "subgraph cluster_0 {";
-  print (sprintf "label = \"%s\"\n" g.func_name);
-  List.iter g.order ~f:(fun b ->
-      let node =
-        if names_only then sprintf "%s [label=\"%s\"];\n" b b
-        else
-          sprintf "%s [label=\"%s\" shape=\"record\"];\n" b
-            (block_to_dot g b)
-      in
-      print node);
-  List.iter g.order ~f:(fun u ->
-      u |> G.succs_e g.graph
-      |> List.iter ~f:(fun p ->
-             let edge_lbl =
-               match p with
-               | True, _ -> "[color=\"blue\"]"
-               | False, _ -> "[color=\"red\"]"
-               | _ -> ""
-             in
-             print
-               (sprintf "%s -> %s %s;\n" u (snd p) edge_lbl)));
-  print "}}\n"
+  let nf = (fun n -> sprintf "%s [label=\"%s\" shape=\"record\"];\n" n
+                     (block_to_dot g n))
+  in
+  let ef = (fun s e d -> begin match e with
+             | True -> "[color=\"blue\"]"
+             | False -> "[color=\"red\"]"
+             | _ -> "" end
+             |> sprintf "%s -> %s %s;\n" s d)
+  in
+  if names_only
+  then Graph.to_dot g.graph ~oc ~nodes:g.order ~label:g.func_name ~ef
+  else Graph.to_dot g.graph ~oc ~nodes:g.order ~label:g.func_name ~nf ~ef
 
 (**Cleans [graph] so every node is reachable from entry*)
 let remove_unreachable graph =

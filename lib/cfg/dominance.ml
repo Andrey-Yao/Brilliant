@@ -9,7 +9,7 @@ let extract all = function None -> all | Some s -> s
 
 (**Gives the reverse postorder of [graph] starting from 
  [hd order] as a list. Unreachable nodes are omitted *)
-let reverse_post_order ~(order : string list) ~(graph : Graph.t) =
+let reverse_post_order ~(order : string list) ~(graph : _ Graph.t) =
   (*Starts from [node] as root and does a postorder traversal
     while prepending elements to stack, while keeping track of
     which nodes have been visited via [set]*)
@@ -30,7 +30,7 @@ let reverse_post_order ~(order : string list) ~(graph : Graph.t) =
 (**Performs a single update in the dominator set for the 
    block [b] from [doms]. Returns [None] if no change happened.
    What are you doing, step dom?*)
-let step_dom (doms:t) (all:SS.t) (g:Graph.t) (b:string): t option =
+let step_dom (doms:t) (all:SS.t) (g: _ Graph.t) (b:string): t option =
   let doms_b_old = b |> SM.find doms |> extract all in
   let ss = match Graph.preds g b with
     | [] -> SS.empty
@@ -38,10 +38,9 @@ let step_dom (doms:t) (all:SS.t) (g:Graph.t) (b:string): t option =
            p |> SM.find doms |> extract all |> SS.inter accum)
   in
   let doms_b_new = SS.add ss b in
-  SS.equal doms_b_new doms_b_old |> string_of_bool |> print_endline;
   if SS.equal doms_b_old doms_b_new then None
   else SM.set ~key:b ~data:doms_b_new doms |> Option.return
-
+  
 
 (**Finds the dominators of each block given reverse postorder
    [rpo] and graph [g]. Omits unreachable blocks*)
@@ -49,7 +48,6 @@ let dominators (g : Cflow.t) =
   let rpo = reverse_post_order ~order:g.order ~graph:g.graph in
   let all = SS.of_list rpo in
   let folder (map, same) b =
-    print_endline b;
     match step_dom map all g.graph b with
     | None -> (map, same)
     | Some m -> (m, false)
@@ -97,6 +95,9 @@ let submissive_tree blocks (doms: t) : t =
     ~init:SM.empty
     ~f:(fun acc e -> SM.add_exn ~key:e ~data:(isubs_b e) acc)
     blocks
+
+
+let dominance_frontier (subs: t) = ()
 
 
 let format =

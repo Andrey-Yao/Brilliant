@@ -20,7 +20,8 @@ let to_dot_submissive ~name ~(cfgs: Cflow.t list) =
   List.iter cfgs ~f:(fun cfg ->
       let doms = Dominance.dominators cfg in
       let sub_tree = Dominance.submissive_tree cfg.order doms in
-      Dominance.to_dot fout sub_tree cfg.order cfg.func_name;);
+      Dominance.to_dot fout sub_tree cfg.order cfg.func_name;
+      Dominance.to_dot fout doms cfg.order cfg.func_name;);
   close fout
 
 let process_single ~lvn ~outs ~srcpath ~outpath ~file =
@@ -48,8 +49,8 @@ let process ~lvn ~outs ~srcpath ~outpath ~files =
      let prog = Bril.of_json yojson in
      let cfgs = List.map prog ~f:Cflow.of_func in
      to_dot_submissive ~name:"tmp" ~cfgs;
-     let yojson2 = List.map cfgs ~f:Cflow.to_func |> Bril.to_json in ()
-  (*   Basic.to_channel Out_channel.stdout yojson2 *)
+     let yojson2 = List.map cfgs ~f:Cflow.to_func |> Bril.to_json in
+     Basic.to_channel Out_channel.stdout yojson2
 
  
 let command =

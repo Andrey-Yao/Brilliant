@@ -1,19 +1,14 @@
 open! Core
 
-(** Digraph *)
-
 module SM = String.Map
 
-(**[Next] is fall through*)
-type edge = True | False | Jump | Next
-
-type t = {
-    succs_map : (edge * string) list SM.t;
-    preds_map : (edge * string) list SM.t;
+type 'a t = {
+    succs_map : ('a * string) list SM.t;
+    preds_map : ('a * string) list SM.t;
   }
 
 let empty = { succs_map = SM.empty; preds_map = SM.empty }
-let opt_to_lst = function None -> [] | Some l -> l
+let opt_to_lst = function None -> [] | Some s -> s
 let succs_e g n = SM.find g.succs_map n |> opt_to_lst
 let preds_e g n = SM.find g.preds_map n |> opt_to_lst
 let succs g n = succs_e g n |> List.map ~f:snd
@@ -44,3 +39,29 @@ let remove g n =
       (succs g n)
   in
   { succs_map = SM.remove succs_map_1 n; preds_map = SM.remove preds_map_1 n; }
+
+
+let format =
+  "fontname=\"Times\"\n\
+   fontsize=\"20\"\n\
+   penwidth=1\n\
+   node[fontsize=\"16\" shape=\"box\" fontname=\"Times\"]\n"
+
+let default_nf = fun n -> sprintf "\"%s\" [label=\"%s\"]\n" n n
+
+let defualt_ef = fun src _ dst -> sprintf "\"%s\" -> \"%s\"\n" src dst
+
+let to_dot ~(oc:Out_channel.t) ~nodes ~label
+      ?(nf = default_nf) ?(ef=defualt_ef) g =
+  let open Out_channel in
+  let print = output_string oc in
+  print ("digraph {\n");
+  print format;
+  print "subgraph cluster_0 {\n";
+  print (sprintf "label = \"%s\"\n" label);
+  List.iter nodes ~f:(fun n -> n |> nf |> print; print "\n");
+  List.iter nodes ~f:(fun src ->
+      src |> succs_e g |> List.iter ~f:(fun (e, dst) ->
+                              ef src e dst |> print;
+                              print "\n"));
+  print "}}\n"

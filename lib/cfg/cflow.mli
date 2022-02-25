@@ -6,8 +6,11 @@ module G = Graph
 type block_t = string * Instr.t Array.t
 (**[(block_name, instrs)]*)
 
+(**[Next] is fall through*)
+type edge = True | False | Jump | Next
+
 type t = {
-  graph : G.t; (*The control flow graph*)
+  graph : edge G.t; (*The control flow graph*)
   args : Instr.dest list;
   order : string list; (*Blocks in original order*)
   ret_type : Bril_type.t option;
