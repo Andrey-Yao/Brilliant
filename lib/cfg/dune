@@ -1,6 +1,3 @@
 (library
  (name cfg)
- (libraries ir)
- (preprocess
-  (pps ppx_jane))
-  (modules_without_implementation sig))
+ (libraries ir core ocamlgraph))

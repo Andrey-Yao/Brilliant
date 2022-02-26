@@ -1,26 +1,24 @@
-open Util
 open! Core
+open Util
 
-module G = Graph.Make(struct type t = unit end)
-module Cfg = Cflow.G
+type t = SS.t SM.t
 
 (**Simulates initializing to [all] in dom map*)
 let extract all = function None -> all | Some s -> s
 
 (**Gives the reverse postorder of [graph] starting from 
  [hd order] as a list. Unreachable nodes are omitted *)
-let reverse_post_order ~(order : string list) ~(graph : Cflow.G.t) =
+let reverse_post_order ~(order : string list) ~(graph : _ Graph.t) =
   (*Starts from [node] as root and does a postorder traversal
     while prepending elements to stack, while keeping track of
     which nodes have been visited via [set]*)
   let stack = Stack.create () in
-  let rec build (set:SS.t) node : SS.t =
+  let rec build set node : SS.t =
     if SS.mem set node then set
-    else (let tmp =
-            SS.fold
-              ~f:(fun se n -> build se n)
-              ~init:(SS.add set node)
-              (Cflow.G.succs graph node) in
+    else (let tmp = List.fold
+            ~init:(SS.add set node)
+            ~f:(fun se n -> build se n)
+            (Graph.succs graph node) in
           Stack.push stack node; tmp) in
   match order with
   | [] -> []
@@ -31,17 +29,16 @@ let reverse_post_order ~(order : string list) ~(graph : Cflow.G.t) =
 (**Performs a single update in the dominator set for the 
    block [b] from [doms]. Returns [None] if no change happened.
    What are you doing, step dom?*)
-let step_dom (doms: G.t) (all: SS.t) (g: Cfg.t) (b: string): G.t option =
-  let doms_b_old = b |> G.succs doms in
-  let ss =
-    let preds_b = Cfg.preds g b in
-    if SS.is_empty preds_b then SS.empty
-    else SS.fold preds_b ~init:all ~f:(fun accum p ->
-           p |> G.succs doms |> SS.inter accum)
+let step_dom (doms:t) (all:SS.t) (g: _ Graph.t) (b:string): t option =
+  let doms_b_old = b |> SM.find doms |> extract all in
+  let ss = match Graph.preds g b with
+    | [] -> SS.empty
+    | l -> l |> List.fold ~init:all ~f:(fun accum p ->
+           p |> SM.find doms |> extract all |> SS.inter accum)
   in
   let doms_b_new = SS.add ss b in
   if SS.equal doms_b_old doms_b_new then None
-  else G.add_edge ~src:b ~dst:  |> Option.return
+  else SM.set ~key:b ~data:doms_b_new doms |> Option.return
   
 
 (**Finds the dominators of each block given reverse postorder
@@ -60,6 +57,8 @@ let dominators (g : Cflow.t) =
     else converge (List.fold ~f:folder ~init:(map, true) rpo)
   in
   converge (SM.empty, false)
+
+
 
 
 (**[invert blocks doms] gives the submissive map of blocks.

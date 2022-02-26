@@ -48,7 +48,7 @@ let process ~lvn ~outs ~srcpath ~outpath ~files =
      let yojson = Basic.from_channel (In_channel.stdin) in
      let prog = Bril.of_json yojson in
      let cfgs = List.map prog ~f:Cflow.of_func in
-     to_dot_submissive ~name:"tmp" ~cfgs;
+     (*to_dot_submissive ~name:"tmp" ~cfgs; *)
      let yojson2 = List.map cfgs ~f:Cflow.to_func |> Bril.to_json in
      Basic.to_channel Out_channel.stdout yojson2
 

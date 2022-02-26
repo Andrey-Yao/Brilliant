@@ -1,16 +1,18 @@
+open! Core
 open Ir
 open Util
-
-(**[Next] is fall through*)
-type edge = True | False | Jump | Next
-
-module G: Sig.G with type e = edge
+module G = Graph
 
 type block_t = string * Instr.t Array.t
 (**[(block_name, instrs)]*)
 
+(**[Next] is fall through*)
+type edge = True | False | Jump | Next
+
+type g = edge G.t
+
 type t = {
-  graph : G.t; (*The control flow graph*)
+  graph : g; (*The control flow graph*)
   args : Instr.dest list;
   order : string list; (*Blocks in original order*)
   ret_type : Bril_type.t option;
@@ -20,5 +22,4 @@ type t = {
 
 val of_func : Func.t -> t
 val to_func : t -> Func.t
-val to_dot : names_only:bool -> Stdio.Out_channel.t -> t -> unit
-                                                      
+val to_dot : names_only:bool -> Out_channel.t -> t -> unit

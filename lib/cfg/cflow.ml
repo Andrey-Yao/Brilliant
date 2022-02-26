@@ -1,22 +1,22 @@
+open! Core
 open Ir
 open Util
-open! Core
-
-type edge = True | False | Jump | Next
-module G = Graph.Make(struct type t = edge end)
+module G = Graph
 
 type block_t = string * Instr.t Array.t
 
+type edge = True | False | Jump | Next
+
+type g = edge G.t
+
 type t = {
-  graph : G.t; (*The control flow graph*)
+  graph : g; (*The control flow graph*)
   args : Instr.dest list;
   order : string list; (*Blocks in original order*)
   ret_type : Bril_type.t option;
   func_name : string; (*Name of function this cfg represents*)
   map : block_t SM.t; (*yeah*)
-  }
-
-let hd_opt = function | [] -> None | h::_ -> Some h
+}
 
 (** [next_block instrs info i] returns [(instrs1, info1)] where
  [info1] is [info] with fields updated to include the next block in
@@ -26,7 +26,7 @@ let next_block (instrs : Instr.t list) (info : t) (i : int ref) :
     Instr.t list * t =
   let open Instr in
   let name =
-    match hd_opt instrs with
+    match List.hd instrs with
     | Some (Label l) -> l
     | _ ->
         sprintf "_B%d"
@@ -71,7 +71,7 @@ let of_func (funct: Func.t) =
       order = [];
       ret_type = funct.ret_type;
       func_name = funct.name;
-      map = SM.empty;
+      map = String.Map.empty;
     }
   in
   process_instrs funct.instructions init_info (ref 0) |> fun inf ->
@@ -112,8 +112,8 @@ let to_dot ~names_only oc g =
              |> sprintf "%s -> %s %s;\n" s d)
   in
   if names_only
-  then G.to_dot g.graph ~oc ~nodes:g.order ~label:g.func_name ~ef
-  else G.to_dot g.graph ~oc ~nodes:g.order ~label:g.func_name ~nf ~ef
+  then Graph.to_dot g.graph ~oc ~nodes:g.order ~label:g.func_name ~ef
+  else Graph.to_dot g.graph ~oc ~nodes:g.order ~label:g.func_name ~nf ~ef
 
 (**Cleans [graph] so every node is reachable from entry*)
 let remove_unreachable graph =
