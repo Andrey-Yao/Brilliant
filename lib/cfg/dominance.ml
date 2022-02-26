@@ -1,35 +1,41 @@
 open! Core
 open Util
+module G =
+  Graph.Persistent.Digraph.ConcreteBidirectional(
+      struct
+        type t = string [@@deriving compare, equal, hash]
+      end)
 
-type t = SS.t SM.t
+let nlbl = Cflow.G.V.label
+let elbl = Cflow.G.E.label
 
 (**Simulates initializing to [all] in dom map*)
 let extract all = function None -> all | Some s -> s
 
 (**Gives the reverse postorder of [graph] starting from 
  [hd order] as a list. Unreachable nodes are omitted *)
-let reverse_post_order ~(order : string list) ~(graph : _ Graph.t) =
+let reverse_post_order ~(order: string list) ~(cfg: Cflow.t) =
   (*Starts from [node] as root and does a postorder traversal
     while prepending elements to stack, while keeping track of
     which nodes have been visited via [set]*)
   let stack = Stack.create () in
   let rec build set node : SS.t =
-    if SS.mem set node then set
+    if node |> nlbl |> SS.mem set then set
     else (let tmp = List.fold
-            ~init:(SS.add set node)
-            ~f:(fun se n -> build se n)
-            (Graph.succs graph node) in
+            ~init:(node |> nlbl |> SS.add set)
+            ~f:(fun se v -> build se v)
+            (Cflow.G.succ cfg.graph node) in
           Stack.push stack node; tmp) in
   match order with
   | [] -> []
   | entry :: _ ->
-     let _: SS.t = build SS.empty entry in
+     let _: SS.t = build SS.empty (Cflow.G.V.create entry) in
      Stack.to_list stack
 
 (**Performs a single update in the dominator set for the 
    block [b] from [doms]. Returns [None] if no change happened.
    What are you doing, step dom?*)
-let step_dom (doms:t) (all:SS.t) (g: _ Graph.t) (b:string): t option =
+let step_dom (doms: G.t) (all:SS.t) (g: Cflow.G.t) (b:string): G.t option =
   let doms_b_old = b |> SM.find doms |> extract all in
   let ss = match Graph.preds g b with
     | [] -> SS.empty

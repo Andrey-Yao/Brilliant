@@ -1,3 +1,5 @@
 (library
- (name cfg)
- (libraries ir core ocamlgraph))
+(name cfg)
+(libraries ir core ocamlgraph)
+(preprocess
+(pps ppx_jane)))	
