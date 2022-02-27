@@ -33,7 +33,6 @@ let reverse_post_order ~order ~cfg
      let _: SS.t = build SS.empty entry in
      Stack.to_list stack
 
-
 (**Performs a single update in the dominator set for the 
    block [b] from [doms]. Returns [None] if no change happened.
    What are you doing, step dom?*)
@@ -77,18 +76,18 @@ let bfs order (doms: t) =
   match order with
   | [] -> G.empty
   | root :: _ -> 
-     let set = Stdlib.Hashtbl.create 25 in
+     let set = String.Hash_set.create () in
      let edges = Queue.create () in
      let queue = Queue.create () in
      Queue.enqueue queue root;
-     Stdlib.Hashtbl.add set root ();
+     Hash_set.add set root;
      while queue |> Queue.is_empty |> not do
        let u = Queue.dequeue_exn queue in
        G.VS.iter (G.succs doms u)
          ~f:(fun v ->
-           if String.(<>) u v && not (Stdlib.Hashtbl.mem set v)
+           if String.(<>) u v && not (Hash_set.mem set v)
            then (Queue.enqueue queue v;
-                 Stdlib.Hashtbl.add set v ();
+                 Hash_set.add set v;
                  Queue.enqueue edges (u, v))
            else ())
      done;
@@ -98,3 +97,7 @@ let bfs order (doms: t) =
 
 
 let dominance_frontier (_: G.t) = ()
+
+(*
+let to_dot doms 
+ *)
