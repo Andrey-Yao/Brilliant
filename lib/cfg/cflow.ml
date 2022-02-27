@@ -1,6 +1,6 @@
 open! Core
-open Ir
 open Util
+open Ir
 
 type block_t = string * Instr.t Array.t
 

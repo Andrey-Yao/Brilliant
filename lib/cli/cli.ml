@@ -14,12 +14,13 @@ let to_dot_file ~name ~cfgs =
     cfgs;
   close fout
 
+
 let to_dot_submissive ~name ~(cfgs: Cflow.t list) =
   let open Stdio__Out_channel in
   let fout = create (name ^ "_sub.dot") in
   List.iter cfgs ~f:(fun cfg ->
       let doms = Dominance.dominators cfg in
-      let sub_tree = Dominance.submissive_tree cfg.order doms in
+      let tree = Dominance.bfs cfg.order doms in
       Dominance.to_dot fout sub_tree cfg.order cfg.func_name;
       Dominance.to_dot fout doms cfg.order cfg.func_name;);
   close fout

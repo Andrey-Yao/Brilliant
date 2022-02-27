@@ -1,5 +1,4 @@
 open! Core
-open Cfg
 open Sig
 
 module Forward (F : Frame) = struct
@@ -7,15 +6,15 @@ module Forward (F : Frame) = struct
 
   (**[work_forward funct wdata wlist] works on the head of [wlist] and returns
      updated [wdata] and [wlist]. Does nothing if [wlist] is empty*)
-  let work_forward (funct : Cflow.t) (wdata : t) (wlist : string list) =
+  let work_forward (funct: Cfg.Cflow.t) (wdata : t) (wlist : string list) =
     let getdata = String.Map.find_exn wdata in
-    let open Cflow in
+    let open Cfg.Cflow in
     match wlist with
     | [] -> (wdata, wlist)
     | b :: rest ->
         let preds = G.preds funct.graph b in
         let inb =
-          List.fold
+          G.VS.fold
             ~f:(fun a e -> getdata e |> snd |> F.meet a)
             ~init:F.top preds
         in
@@ -23,12 +22,12 @@ module Forward (F : Frame) = struct
         let new_outb = F.transfer inb (String.Map.find_exn funct.map b) in
         let wlist_new =
           if F.equal new_outb old_outb then rest
-          else G.succs funct.graph b @ rest
+          else (G.succs funct.graph b |> G.VS.to_list) @ rest
         in
         let wdata_new = String.Map.set ~key:b ~data:(inb, new_outb) wdata in
         (wdata_new, wlist_new)
 
-  let solve (funct : Cflow.t) : t =
+  let solve (funct: Cfg.Cflow.t) : t =
     let initlist = funct.order in
     let initdata =
       List.fold
@@ -43,32 +42,34 @@ module Forward (F : Frame) = struct
     helper (initdata, initlist)
 end
 
+
 module Backward (F : Frame) = struct
   type t = (F.p * F.p) String.Map.t
 
   (**[work_backward funct wdata wlist] works on the head of [wlist] and returns
      updated [wdata] and [wlist]. Does nothing if [wlist] is empty*)
-  let work_backward (funct : Cflow.t) (wdata : t) (wlist : string list) =
+  let work_backward (funct: Cfg.Cflow.t) (wdata : t) (wlist : string list) =
     let getdata = String.Map.find_exn wdata in
-    let open Cflow in
+    let open Cfg.Cflow in
     match wlist with
     | [] -> (wdata, wlist)
     | b :: rest ->
         let succs = G.succs funct.graph b in
         let outb =
-          List.fold
+          G.VS.fold
             ~f:(fun a e -> getdata e |> fst |> F.meet a)
             ~init:F.top succs
         in
         let old_inb = getdata b |> fst in
         let new_inb = F.transfer outb (String.Map.find_exn funct.map b) in
         let wlist_new =
-          if F.equal old_inb new_inb then rest else G.succs funct.graph b @ rest
+          if F.equal old_inb new_inb then rest
+          else (G.preds funct.graph b |> G.VS.to_list) @ rest
         in
         let wdata_new = String.Map.set ~key:b ~data:(outb, new_inb) wdata in
         (wdata_new, wlist_new)
 
-  let solve (funct : Cflow.t) : t =
+  let solve (funct : Cfg.Cflow.t) : t =
     let initlist = funct.order in
     let initdata =
       List.fold
