@@ -5,9 +5,9 @@ open Util
 (**[Next] is fall through*)
 type edge_lbl = True | False | Jump | Next
 
-module G : Graph.Sig.P
-       with type V.label = string
-        and type E.label = edge_lbl
+module G: Sig.Labelled
+       with type v = string
+        and type e = edge_lbl
 
 type block_t = string * Instr.t Array.t
 (**[(block_name, instrs)]*)
