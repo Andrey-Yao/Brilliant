@@ -4,13 +4,13 @@ module type Frame = sig
   val top : p
   val meet : p -> p -> p
   val equal : p -> p -> bool
-  val transfer : p -> Cfg.Cflow.block_t -> p
+  val transfer : p -> Ir.Func.block_t -> p
 end
 
 module type DataFlow = sig
   type t
 
-  val solve : Cfg.Cflow.t -> t
+  val solve : Ir.Func.t -> t
   (**[solve funct] is the solution to the dataflow
      equations based on funct and the module
      implementation of [D]*)

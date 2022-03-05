@@ -1,6 +1,6 @@
 (*modified from https://github.com/sampsyo/bril/tree/main/bril-ocaml*)
 open! Core
-open! Common
+open! Util.Common
 
 type dest = string * Bril_type.t [@@deriving compare, equal, sexp_of]
 type label = string [@@deriving compare, equal, sexp_of]

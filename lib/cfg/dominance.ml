@@ -1,14 +1,14 @@
 open! Core
-open Util
+open Util.Common
 
 module G =
-  Graph.MakeUnlabelled(
+  Util.Graph.MakeUnlabelled(
       struct
         type t = string [@@deriving compare, equal, sexp]
         let to_string s = s
       end)
 
-module CFG = Cflow.G
+module CFG = Ir.Func.G
 
 type t = G.t
 
@@ -22,10 +22,10 @@ let reverse_post_order ~order ~cfg
   let stack = Stack.create () in
   let rec build set node: SS.t =
     if SS.mem set node then set
-    else (let tmp = Cflow.G.VS.fold
+    else (let tmp = CFG.VS.fold
             ~init:(SS.add set node)
             ~f:(fun se v -> build se v)
-            (Cflow.G.succs cfg node) in
+            (CFG.succs cfg node) in
           Stack.push stack node; tmp) in
   match order with
   | [] -> []
@@ -36,12 +36,12 @@ let reverse_post_order ~order ~cfg
 (**Performs a single update in the dominator set for the 
    block [b] from [doms]. Returns [None] if no change happened.
    What are you doing, step dom?*)
-let step_dom (doms: t) (cfg: CFG.t) (b:string): t option =
+let step_dom (doms: t) (func: CFG.t) (b:string): t option =
   let open G in
   let doms_b_old = succs doms b in
   let ss =
     CFG.VS.fold
-      (CFG.preds cfg b)
+      (CFG.preds func b)
       ~init: VS.empty
       ~f:(fun acc p -> acc |> VS.inter (succs doms p))
   in
@@ -55,7 +55,7 @@ let step_dom (doms: t) (cfg: CFG.t) (b:string): t option =
 
 (**Finds the dominators of each block given reverse postorder
    [rpo] and graph [g]. Omits unreachable blocks*)
-let dominators (g: Cflow.t): t =
+let dominators (g: Ir.Func.t): t =
   let open G in
   let rpo = reverse_post_order ~order:g.order ~cfg:g.graph in
   let folder (map, same) b =

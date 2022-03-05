@@ -1,6 +1,5 @@
 (library
 (name cfg)
-(libraries ir core)
+(libraries ir util core)
 (preprocess
-(pps ppx_jane))
-(modules_without_implementation sig))	
+(pps ppx_jane)))	

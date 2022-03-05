@@ -2,7 +2,7 @@
 
 type t
 
-val dominators: Cflow.t -> t
+val dominators: Ir.Func.t -> t
 
 val bfs: string list -> t -> t
 

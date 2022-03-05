@@ -1,16 +1,81 @@
-(*modified from https://github.com/sampsyo/bril/tree/main/bril-ocaml*)
 open! Core
-open! Common
+open Util
+
+type block_t = string * (Instr.t Array.t)
+
+type edge_lbl = True | False | Jump | Next [@@deriving sexp]
+
+module SM = String.Map
+module SS = String.Set
+
+module G =
+  Graph.MakeLabelled(
+      struct
+        type t = string [@@deriving compare, equal, sexp]
+        let to_string s = s
+      end)(
+      struct
+        type t = edge_lbl [@@deriving sexp]
+      end)
+
 
 type t = {
-  name : string;
-  args : Instr.dest list;
-  ret_type : Bril_type.t option;
-  instructions : Instr.t list;
-}
-[@@deriving compare, equal, sexp_of]
+    map : block_t SM.t; (*yeah*)
+    args : Instr.dest list;
+    name : string; (*Name of function*)
+    graph : G.t; (*The control flow graph*)
+    order : string list; (*Blocks in original or;der*)
+    ret_type : Bril_type.t option;
+  }
 
-let of_json json =
+
+(** [next_block instrs info i] returns [(instrs1, info1)] where
+ [info1] is [info] with fields updated to include the next block in
+ [instrs], and [instrs1] are the remaining instructions. Requires
+ [instrs] to be nonempty. *)
+let next_block (instrs : Instr.t list) (info : t) (i : int ref) :
+    Instr.t list * t =
+  let open Instr in
+  let name =
+    match List.hd instrs with
+    | Some (Label l) -> l
+    | _ ->
+        sprintf "_B%d"
+          (i := !i + 1;
+           !i)
+  in
+  (*The [curr] returned is in reversed order*)
+  let rec step curr rest g =
+    let open G in
+    let src = name in
+    match rest with
+    | [] -> (curr, rest, g)
+    (*Next three cases are terminators*)
+    | (Jmp dst as h) :: t -> (h :: curr, t, add_edge ~src ~edg:Jump ~dst g)
+    | (Br (_, l1, l2) as h) :: t ->
+        let g1 = add_edge ~src ~edg:True ~dst:l1 g in
+        let g2 = add_edge ~src ~edg:True ~dst:l2 g1 in
+        (h :: curr, t, g2)
+    | (Ret _ as h) :: t -> (h :: curr, t, g)
+    | h :: (Label blk :: _ as rst) ->
+        (h :: curr, rst, add_edge ~src ~edg:Next ~dst:blk g)
+    | h :: t -> step (h :: curr) t g
+  in
+  let curr, rest, g = step [] instrs info.graph in
+  let arr = Array.of_list_rev curr in
+  let map1 = String.Map.add_exn ~key:name ~data:(name, arr) info.map in
+  (rest, { info with order = name :: info.order; map = map1; graph = g })
+
+(** Updates [info] recursively *)
+let rec process_instrs instrs info i =
+  match instrs with
+  | [] -> info
+  | _ ->
+      let res = next_block instrs info i in
+      process_instrs (fst res) (snd res) i
+
+
+let of_json (json: Yojson.Basic.t) =
   let open Yojson.Basic.Util in
   let arg_of_json json =
     ( json |> member "name" |> to_string,
@@ -18,48 +83,88 @@ let of_json json =
   in
   let name = json |> member "name" |> to_string in
   let args =
-    json |> member "args" |> to_list_nonnull |> List.map ~f:arg_of_json
+    json |> member "args" |> Common.to_list_nonnull |> List.map ~f:arg_of_json
   in
   let ret_type = json |> member "type" |> Bril_type.of_json_opt in
   let instructions =
-    json |> member "instrs" |> to_list_nonnull |> List.map ~f:Instr.of_json
+    json |> member "instrs" |> Common.to_list_nonnull |> List.map ~f:Instr.of_json
   in
-  { name; args; ret_type; instructions }
+  let init_info = {
+      args; name; ret_type; order = []; graph = G.empty; map = String.Map.empty;
+    }
+  in
+  process_instrs instructions init_info (ref 0) |> fun inf ->
+  { inf with order = List.rev inf.order }
 
-let to_json t =
+
+let to_json (g: t) : Yojson.Basic.t =
+  let instrs =
+    List.map ~f:(fun n -> SM.find_exn g.map n |> snd |> Array.to_list) g.order
+    |> List.concat in 
   `Assoc
     ([
-       ("name", `String t.name);
-       ( "args",
-         `List
-           (List.map t.args ~f:(fun (name, bril_type) ->
-                `Assoc
-                  [
-                    ("name", `String name); ("type", Bril_type.to_json bril_type);
-                  ])) );
-       ("instrs", `List (t.instructions |> List.map ~f:Instr.to_json));
-     ]
-    @ Option.value_map t.ret_type ~default:[] ~f:(fun t ->
-          [ ("type", Bril_type.to_json t) ]))
+        ("name", `String g.name);
+        ( "args",
+          `List
+            (List.map g.args ~f:(fun (name, bril_type) ->
+                 `Assoc
+                   [
+                     ("name", `String name); ("type", Bril_type.to_json bril_type);
+        ])) );
+        ("instrs", `List (instrs |> List.map ~f:Instr.to_json));
+      ]
+     @ Option.value_map g.ret_type ~default:[] ~f:(fun t ->
+           [ ("type", Bril_type.to_json t) ]))
 
-let to_string { name; args; ret_type; instructions } =
-  let header =
-    sprintf "@%s%s%s {" name
-      (match args with
-      | [] -> ""
-      | args ->
-          sprintf "(%s)"
-            (List.map args ~f:(fun (name, bril_type) ->
-                 sprintf "%s: %s" name (Bril_type.to_string bril_type))
-            |> String.concat ~sep:", "))
-      (Option.value_map ret_type ~default:"" ~f:Bril_type.to_string)
+
+let block_to_dot g b =
+  let buf = Buffer.create 10 in
+  Buffer.add_char buf '{';
+  Buffer.add_string buf b;
+  let arr = SM.find_exn g.map b |> snd in
+  Array.iter arr ~f:(fun instr ->
+      Buffer.add_char buf '|';
+      Buffer.add_string buf (Instr.to_string instr));
+  Buffer.add_char buf '}';
+  Buffer.contents buf
+
+
+let to_dot ~names_only oc g =
+  let nf = (fun n -> sprintf "%s [label=\"%s\" shape=\"record\"];\n" n
+                     (block_to_dot g n))
   in
-  let body =
-    instructions
-    |> List.map ~f:(fun instr ->
-           sprintf
-             (match instr with Label _ -> "%s:" | _ -> "  %s;")
-             (Instr.to_string instr))
-    |> String.concat ~sep:"\n"
+  let ef = (fun s e d -> begin match e with
+             | True -> "[color=\"blue\"]"
+             | False -> "[color=\"red\"]"
+             | _ -> "" end
+             |> sprintf "%s -> %s %s;\n" s d)
   in
-  sprintf "%s\n%s\n}" header body
+  if names_only
+  then G.to_dot g.graph ~oc ~nodes:g.order ~label:g.name ~ef
+  else G.to_dot g.graph ~oc ~nodes:g.order ~label:g.name ~nf ~ef
+
+
+let map_blocks ~f func =
+  let map_new = SM.map ~f func.map in
+  { func with map = map_new }
+  
+
+
+(**Cleans [graph] so every node is reachable from entry*)
+let remove_unreachable graph =
+  let rec traverse set v =
+    if SS.mem set v then set
+    else v |> G.succs graph.graph |> G.VS.to_list
+         |> List.map ~f:(traverse set) |> SS.union_list
+  in
+  match graph.order with
+  | [] -> graph
+  | start :: _ ->
+      let reachable = traverse SS.empty start in
+      let folder (g, ord) n =
+        if SS.mem reachable n then (g, n :: ord)
+        else
+          ({ g with graph = G.del_vert g.graph n; map = SM.remove g.map n }, ord)
+      in
+      let g, ord = folder (graph, []) start in
+      { g with order = List.rev ord }
