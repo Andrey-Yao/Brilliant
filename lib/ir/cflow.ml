@@ -2,7 +2,7 @@ open! Core
 open Util
 open Ir
 
-type block_t = string * Instr.t Array.t
+type block_t = string * (Instr.t Array.t)
 
 type edge_lbl = True | False | Jump | Next [@@deriving sexp]
 

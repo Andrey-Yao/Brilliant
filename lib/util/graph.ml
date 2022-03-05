@@ -1,7 +1,6 @@
 open! Core
 open Sig
 
-
 module MakeCommon(VI: VIngredient) = struct
   module VS = Set.Make(VI)
   module VM = Map.Make(VI)

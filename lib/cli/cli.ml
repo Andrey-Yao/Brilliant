@@ -1,7 +1,7 @@
 open! Core
 open Yojson
-open Ir
 open Cfg
+open Ir
 
 
 let to_dot_file ~name ~cfgs =
@@ -15,20 +15,37 @@ let to_dot_file ~name ~cfgs =
   close fout
 
 
-let to_dot_submissive ~name ~(cfgs: Cflow.t list) =
-  let open Stdio__Out_channel in
-  let fout = create (name ^ "_sub.dot") in
-  List.iter cfgs ~f:(fun cfg ->
-      let doms = Dominance.dominators cfg in
-      let tree = Dominance.bfs cfg.order doms in
-      Dominance.to_dot fout sub_tree cfg.order cfg.func_name;
-      Dominance.to_dot fout doms cfg.order cfg.func_name;);
-  close fout
+(**Local optimizations*)
+let opt_local blck opt =
+  ignore opt; blck
 
-let process_single ~lvn ~outs ~srcpath ~outpath ~file =
+
+let opt_global func opt = func
+
+
+(**Interprocedural optimizations*)
+let opt_universal prog opt = prog
+
+
+let optimize_single prog opt =
+  if String.length opt > 0 then begin
+    match String.get opt with
+    | 'l' ->
+       let map_blck = List.map ~f:opt_local in
+       List.map ~f:opt_local prog
+    | end
+  else 
+      
+
+  
+let optimize ~opts ~in_channel ~out_channel =
+  let prog = in_channel |> Basic.from_channel |> Bril.of_json in
+  
+
+
+let process ~lvn ~outs ~srcpath ~outpath ~file =
   let in_prefix = match srcpath with | None -> "" | Some p -> p in
   let out_prefix = match outpath with | None -> "" | Some p -> p in
-  print_endline out_prefix;
   let in_file = in_prefix ^ file in
   let yojson = Basic.from_file in_file in
   let name = String.chop_suffix_exn file ~suffix:".json" in
@@ -39,23 +56,10 @@ let process_single ~lvn ~outs ~srcpath ~outpath ~file =
   Basic.to_channel Out_channel.stdout yojson;
   Basic.to_file (out_prefix ^ name ^ "_opt.json") yojson
 
-
-let process ~lvn ~outs ~srcpath ~outpath ~files =
-  match files with
-  | _::_ ->
-     List.iter files ~f:(fun p ->
-         process_single ~lvn ~outs ~srcpath ~outpath ~file:p)
-  | [] ->
-     let yojson = Basic.from_channel (In_channel.stdin) in
-     let prog = Bril.of_json yojson in
-     let cfgs = List.map prog ~f:Cflow.of_func in
-     (*to_dot_submissive ~name:"tmp" ~cfgs; *)
-     let yojson2 = List.map cfgs ~f:Cflow.to_func |> Bril.to_json in
-     Basic.to_channel Out_channel.stdout yojson2
-
  
 let command =
-  Core.Command.basic ~summary:"Brilliant, the compiler optimizer for BRIL"
+  Core.Command.basic
+    ~summary:"Brilliant, the compiler optimizer for BRIL"
     ~readme:(fun () -> "more info...")
     Core.Command.Let_syntax.(
       let%map_open lvn =
@@ -72,5 +76,5 @@ let command =
       and srcpath =
         flag "-S" (optional string)
           ~doc:"<path> Specify where to find input source files"
-      and files = anon (sequence ("filename" %: Core.Filename.arg_type)) in
-      fun () -> process ~lvn ~outs ~srcpath ~outpath ~files)
+      and file = anon ("filename" %: Core.Filename.arg_type) in
+      fun () -> process ~lvn ~outs ~srcpath ~outpath ~file)
