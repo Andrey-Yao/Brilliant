@@ -4,12 +4,13 @@ open Util
 (**[Next] is fall through*)
 type edge_lbl = True | False | Jump | Next
 
+(**[G] is the module of the CFG*)
 module G: Sig.Labelled
        with type v = string
         and type e = edge_lbl
 
-type block_t = string * Instr.t Array.t
 (**[(block_name, instrs)]*)
+type block_t = string * Instr.t Array.t
 
 type t = {
     map : block_t String.Map.t; (*yeah*)
@@ -20,7 +21,15 @@ type t = {
     ret_type : Bril_type.t option;
   }
 
+(**Parses a json file*)
 val of_json : Yojson.Basic.t -> t
+
+(**Outputs to json file*)
 val to_json : t -> Yojson.Basic.t
+
 val to_dot : names_only:bool -> Out_channel.t -> t -> unit
+
 val map_blocks : f:(block_t -> block_t) -> t -> t
+
+(**Cleans [graph] and purges nodes reachable from entry*)
+val clean : t -> t

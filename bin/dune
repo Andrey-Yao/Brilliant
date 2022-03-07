@@ -1,3 +1,5 @@
 (executable
  (name main)
- (libraries core cli df ir lvn))
+ (libraries core df cfg ir lvn)
+ (preprocess
+  (pps ppx_jane)))

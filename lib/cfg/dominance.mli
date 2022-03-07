@@ -1,6 +1,7 @@
 
+module G: Util.Sig.Unlabelled with type v = string and type VS.Elt.t = string
 
-type t
+type t = G.t
 
 val dominators: Ir.Func.t -> t
 

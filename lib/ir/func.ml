@@ -74,6 +74,36 @@ let rec process_instrs instrs info i =
       let res = next_block instrs info i in
       process_instrs (fst res) (snd res) i
 
+let clean func =
+  let reachable =
+    let root = List.hd_exn func.order in
+    let set = String.Hash_set.create () in
+    let edges = Queue.create () in
+    let queue = Queue.create () in
+    Queue.enqueue queue root;
+    Hash_set.add set root;
+    while queue |> Queue.is_empty |> not do
+      let u = Queue.dequeue_exn queue in
+      G.VS.iter (G.succs func.graph u)
+        ~f:(fun v ->
+          if String.(<>) u v && not (Hash_set.mem set v)
+          then (Queue.enqueue queue v;
+                Hash_set.add set v;
+                Queue.enqueue edges (u, v))
+          else ())
+    done;
+    SS.of_hash_set set in
+  match func.order with
+  | [] -> func
+  | _ ->
+     let unreachable = SS.diff (func.order |> SS.of_list) reachable in
+     let order = List.filter ~f:(SS.mem reachable) func.order in
+     let graph, map =
+       SS.fold unreachable
+         ~init: (func.graph, func.map)
+         ~f:(fun (g, m) v -> G.del_vert g v, SM.remove m v) in
+     { func with order; graph; map }
+
 
 let of_json (json: Yojson.Basic.t) =
   let open Yojson.Basic.Util in
@@ -136,8 +166,7 @@ let to_dot ~names_only oc g =
   let ef = (fun s e d -> begin match e with
              | True -> "[color=\"blue\"]"
              | False -> "[color=\"red\"]"
-             | _ -> "" end
-             |> sprintf "%s -> %s %s;\n" s d)
+             | _ -> "" end |> sprintf "%s -> %s %s;\n" s d)
   in
   if names_only
   then G.to_dot g.graph ~oc ~nodes:g.order ~label:g.name ~ef
@@ -148,23 +177,3 @@ let map_blocks ~f func =
   let map_new = SM.map ~f func.map in
   { func with map = map_new }
   
-
-
-(**Cleans [graph] so every node is reachable from entry*)
-let remove_unreachable graph =
-  let rec traverse set v =
-    if SS.mem set v then set
-    else v |> G.succs graph.graph |> G.VS.to_list
-         |> List.map ~f:(traverse set) |> SS.union_list
-  in
-  match graph.order with
-  | [] -> graph
-  | start :: _ ->
-      let reachable = traverse SS.empty start in
-      let folder (g, ord) n =
-        if SS.mem reachable n then (g, n :: ord)
-        else
-          ({ g with graph = G.del_vert g.graph n; map = SM.remove g.map n }, ord)
-      in
-      let g, ord = folder (graph, []) start in
-      { g with order = List.rev ord }

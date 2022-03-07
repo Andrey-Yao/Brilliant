@@ -14,4 +14,3 @@ let of_json json =
   json |> member "functions" |> to_list_nonnull |> List.map ~f:Func.of_json
 
 let to_json t = `Assoc [ ("functions", `List (List.map t ~f:Func.to_json)) ]
-(* let to_string t = t |> List.map ~f:Func.to_string |> String.concat ~sep:"\n\n" *)

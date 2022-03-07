@@ -48,7 +48,7 @@ let step_dom (doms: t) (func: CFG.t) (b:string): t option =
   let doms_b_new = VS.add ss b in
   if VS.equal doms_b_old doms_b_new then None
   else VS.fold doms_b_new
-         ~init:doms
+         ~init:(G.del_vert doms b)
          ~f:(fun acc d -> add_edge acc ~src:b ~dst:d)
        |> Option.return
 
@@ -58,15 +58,15 @@ let step_dom (doms: t) (func: CFG.t) (b:string): t option =
 let dominators (g: Ir.Func.t): t =
   let open G in
   let rpo = reverse_post_order ~order:g.order ~cfg:g.graph in
-  let folder (map, same) b =
-    match step_dom map g.graph b with
-    | None -> (map, same)
+  let folder (doms, same) b =
+    match step_dom doms g.graph b with
+    | None -> (doms, same)
     | Some m -> (m, false)
   in
   (*Repeats till convergence*)
-  let rec converge (map, same) =
-    if (same) then map
-    else converge (List.fold ~f:folder ~init:(map, true) rpo)
+  let rec converge (doms, same) =
+    if (same) then doms
+    else converge (List.fold ~f:folder ~init:(doms, true) rpo)
   in
   converge (full rpo, false)
 
