@@ -1,0 +1,938 @@
+{
+  "functions": [
+    {
+      "args": [
+        {
+          "name": "seq",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "name": "max",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "a",
+          "op": "const",
+          "type": "int",
+          "value": 25214903917
+        },
+        {
+          "dest": "c",
+          "op": "const",
+          "type": "int",
+          "value": 11
+        },
+        {
+          "dest": "m",
+          "op": "const",
+          "type": "int",
+          "value": 281474976710656
+        },
+        {
+          "args": [
+            "seq"
+          ],
+          "dest": "x",
+          "op": "load",
+          "type": "int"
+        },
+        {
+          "args": [
+            "a",
+            "x"
+          ],
+          "dest": "ax",
+          "op": "mul",
+          "type": "int"
+        },
+        {
+          "args": [
+            "ax",
+            "c"
+          ],
+          "dest": "axpc",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "axpc",
+            "m"
+          ],
+          "dest": "next",
+          "op": "div",
+          "type": "int"
+        },
+        {
+          "args": [
+            "next",
+            "m"
+          ],
+          "dest": "next",
+          "op": "mul",
+          "type": "int"
+        },
+        {
+          "args": [
+            "axpc",
+            "next"
+          ],
+          "dest": "next",
+          "op": "sub",
+          "type": "int"
+        },
+        {
+          "args": [
+            "seq",
+            "next"
+          ],
+          "op": "store"
+        },
+        {
+          "args": [
+            "next",
+            "max"
+          ],
+          "dest": "val",
+          "op": "div",
+          "type": "int"
+        },
+        {
+          "args": [
+            "val",
+            "max"
+          ],
+          "dest": "val",
+          "op": "mul",
+          "type": "int"
+        },
+        {
+          "args": [
+            "next",
+            "val"
+          ],
+          "dest": "val",
+          "op": "sub",
+          "type": "int"
+        },
+        {
+          "args": [
+            "val"
+          ],
+          "op": "ret"
+        }
+      ],
+      "name": "rand",
+      "type": "int"
+    },
+    {
+      "args": [
+        {
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "name": "rng",
+          "type": {
+            "ptr": "int"
+          }
+        }
+      ],
+      "instrs": [
+        {
+          "args": [
+            "size"
+          ],
+          "dest": "arr",
+          "op": "alloc",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "dest": "i",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "max",
+          "op": "const",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "dest": "zero",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "label": "loop"
+        },
+        {
+          "args": [
+            "i",
+            "size"
+          ],
+          "dest": "cond",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "cond"
+          ],
+          "labels": [
+            "body",
+            "done"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "body"
+        },
+        {
+          "args": [
+            "rng",
+            "max"
+          ],
+          "dest": "val",
+          "funcs": [
+            "rand"
+          ],
+          "op": "call",
+          "type": "int"
+        },
+        {
+          "args": [
+            "val",
+            "zero"
+          ],
+          "dest": "if_cond",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "if_cond"
+          ],
+          "labels": [
+            "if_body",
+            "if_done"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "if_body"
+        },
+        {
+          "dest": "val",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "label": "if_done"
+        },
+        {
+          "args": [
+            "arr",
+            "i"
+          ],
+          "dest": "loc",
+          "op": "ptradd",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "loc",
+            "val"
+          ],
+          "op": "store"
+        },
+        {
+          "label": "loop_end"
+        },
+        {
+          "args": [
+            "i",
+            "one"
+          ],
+          "dest": "i",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "loop"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "done"
+        },
+        {
+          "args": [
+            "arr"
+          ],
+          "op": "ret"
+        }
+      ],
+      "name": "randarray",
+      "type": {
+        "ptr": "int"
+      }
+    },
+    {
+      "args": [
+        {
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "name": "arr",
+          "type": {
+            "ptr": "int"
+          }
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "i",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "label": "loop"
+        },
+        {
+          "args": [
+            "i",
+            "size"
+          ],
+          "dest": "cond",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "cond"
+          ],
+          "labels": [
+            "body",
+            "done"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "body"
+        },
+        {
+          "args": [
+            "arr",
+            "i"
+          ],
+          "dest": "loc",
+          "op": "ptradd",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "loc"
+          ],
+          "dest": "val",
+          "op": "load",
+          "type": "int"
+        },
+        {
+          "args": [
+            "val"
+          ],
+          "op": "print"
+        },
+        {
+          "label": "loop_end"
+        },
+        {
+          "args": [
+            "i",
+            "one"
+          ],
+          "dest": "i",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "loop"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "done"
+        },
+        {
+          "op": "ret"
+        }
+      ],
+      "name": "printarray"
+    },
+    {
+      "args": [
+        {
+          "name": "size",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "args": [
+            "size"
+          ],
+          "dest": "arr",
+          "op": "alloc",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "dest": "i",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "zero",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "label": "loop"
+        },
+        {
+          "args": [
+            "i",
+            "size"
+          ],
+          "dest": "cond",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "cond"
+          ],
+          "labels": [
+            "body",
+            "done"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "body"
+        },
+        {
+          "args": [
+            "arr",
+            "i"
+          ],
+          "dest": "loc",
+          "op": "ptradd",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "loc",
+            "zero"
+          ],
+          "op": "store"
+        },
+        {
+          "label": "loop_end"
+        },
+        {
+          "args": [
+            "i",
+            "one"
+          ],
+          "dest": "i",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "loop"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "done"
+        },
+        {
+          "args": [
+            "arr"
+          ],
+          "op": "ret"
+        }
+      ],
+      "name": "zeroarray",
+      "type": {
+        "ptr": "int"
+      }
+    },
+    {
+      "args": [
+        {
+          "name": "num_nodes",
+          "type": "int"
+        },
+        {
+          "name": "adjmat",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "name": "csr_offset",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "name": "csr_edges",
+          "type": {
+            "ptr": "int"
+          }
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "num_edges",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "row",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "label": "iter_row"
+        },
+        {
+          "args": [
+            "row",
+            "num_nodes"
+          ],
+          "dest": "row_cond",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "dest": "col",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "args": [
+            "row_cond"
+          ],
+          "labels": [
+            "iter_col",
+            "row_done"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "iter_col"
+        },
+        {
+          "args": [
+            "col",
+            "num_nodes"
+          ],
+          "dest": "col_cond",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "col_cond"
+          ],
+          "labels": [
+            "col_body",
+            "col_done"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "col_body"
+        },
+        {
+          "args": [
+            "row",
+            "num_nodes"
+          ],
+          "dest": "row_tmp",
+          "op": "mul",
+          "type": "int"
+        },
+        {
+          "args": [
+            "row_tmp",
+            "col"
+          ],
+          "dest": "node_idx",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "adjmat",
+            "node_idx"
+          ],
+          "dest": "node_loc",
+          "op": "ptradd",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "node_loc"
+          ],
+          "dest": "node_val",
+          "op": "load",
+          "type": "int"
+        },
+        {
+          "args": [
+            "node_val",
+            "one"
+          ],
+          "dest": "cond",
+          "op": "eq",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "cond"
+          ],
+          "labels": [
+            "if_body",
+            "col_end"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "if_body"
+        },
+        {
+          "args": [
+            "csr_edges",
+            "num_edges"
+          ],
+          "dest": "edge_loc",
+          "op": "ptradd",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "edge_loc",
+            "col"
+          ],
+          "op": "store"
+        },
+        {
+          "args": [
+            "num_edges",
+            "one"
+          ],
+          "dest": "num_edges",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "label": "col_end"
+        },
+        {
+          "args": [
+            "col",
+            "one"
+          ],
+          "dest": "col",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "iter_col"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "col_done"
+        },
+        {
+          "args": [
+            "csr_offset",
+            "row"
+          ],
+          "dest": "offset_loc",
+          "op": "ptradd",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "offset_loc",
+            "num_edges"
+          ],
+          "op": "store"
+        },
+        {
+          "label": "row_end"
+        },
+        {
+          "args": [
+            "row",
+            "one"
+          ],
+          "dest": "row",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "iter_row"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "row_done"
+        },
+        {
+          "args": [
+            "num_edges"
+          ],
+          "op": "ret"
+        }
+      ],
+      "name": "adj2csr",
+      "type": "int"
+    },
+    {
+      "args": [
+        {
+          "name": "num_nodes",
+          "type": "int"
+        },
+        {
+          "name": "seed",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "args": [
+            "one"
+          ],
+          "dest": "rng",
+          "op": "alloc",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "rng",
+            "seed"
+          ],
+          "op": "store"
+        },
+        {
+          "args": [
+            "num_nodes",
+            "num_nodes"
+          ],
+          "dest": "sqsize",
+          "op": "mul",
+          "type": "int"
+        },
+        {
+          "args": [
+            "sqsize",
+            "rng"
+          ],
+          "dest": "adjmat",
+          "funcs": [
+            "randarray"
+          ],
+          "op": "call",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "sqsize"
+          ],
+          "dest": "csr_offset",
+          "funcs": [
+            "zeroarray"
+          ],
+          "op": "call",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "sqsize"
+          ],
+          "dest": "csr_edges",
+          "funcs": [
+            "zeroarray"
+          ],
+          "op": "call",
+          "type": {
+            "ptr": "int"
+          }
+        },
+        {
+          "args": [
+            "num_nodes",
+            "adjmat",
+            "csr_offset",
+            "csr_edges"
+          ],
+          "dest": "num_edges",
+          "funcs": [
+            "adj2csr"
+          ],
+          "op": "call",
+          "type": "int"
+        },
+        {
+          "args": [
+            "num_nodes"
+          ],
+          "op": "print"
+        },
+        {
+          "args": [
+            "num_edges"
+          ],
+          "op": "print"
+        },
+        {
+          "args": [
+            "sqsize",
+            "adjmat"
+          ],
+          "funcs": [
+            "printarray"
+          ],
+          "op": "call"
+        },
+        {
+          "args": [
+            "num_nodes",
+            "csr_offset"
+          ],
+          "funcs": [
+            "printarray"
+          ],
+          "op": "call"
+        },
+        {
+          "args": [
+            "num_edges",
+            "csr_edges"
+          ],
+          "funcs": [
+            "printarray"
+          ],
+          "op": "call"
+        },
+        {
+          "args": [
+            "adjmat"
+          ],
+          "op": "free"
+        },
+        {
+          "args": [
+            "csr_offset"
+          ],
+          "op": "free"
+        },
+        {
+          "args": [
+            "csr_edges"
+          ],
+          "op": "free"
+        },
+        {
+          "args": [
+            "rng"
+          ],
+          "op": "free"
+        },
+        {
+          "op": "ret"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}

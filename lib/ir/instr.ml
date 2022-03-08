@@ -33,7 +33,7 @@ let to_string =
     sprintf "%s: %s =" name (Bril_type.to_string bril_type)
   in
   function
-  | Label label -> sprintf ".%s" label
+  | Label label -> label
   | Const (dest, const) ->
       sprintf "%s const %s" (dest_to_string dest) (Const.to_string const)
   | Binary (dest, op, arg1, arg2) ->
@@ -41,8 +41,8 @@ let to_string =
         arg2
   | Unary (dest, op, arg) ->
       sprintf "%s %s %s" (dest_to_string dest) (Op.Unary.to_string op) arg
-  | Jmp label -> sprintf "jmp .%s" label
-  | Br (arg, l1, l2) -> sprintf "br %s .%s .%s" arg l1 l2
+  | Jmp label -> sprintf "jmp %s" label
+  | Br (arg, l1, l2) -> sprintf "br %s %s %s" arg l1 l2
   | Call (dest, func_name, args) ->
       List.filter
         ([ Option.value_map dest ~default:"" ~f:dest_to_string; func_name ]
@@ -55,11 +55,11 @@ let to_string =
   | Nop -> "nop"
   | Phi (dest, alist) ->
       sprintf "%s phi %s" (dest_to_string dest)
-        (List.map alist ~f:(fun (label, arg) -> sprintf ".%s %s" label arg)
+        (List.map alist ~f:(fun (label, arg) -> sprintf "%s %s" label arg)
         |> String.concat ~sep:" ")
   | Speculate -> "speculate"
   | Commit -> "commit"
-  | Guard (arg, l) -> sprintf "guard %s .%s" arg l
+  | Guard (arg, l) -> sprintf "guard %s %s" arg l
   | Alloc (dst, arg) -> sprintf "%s alloc %s" (dest_to_string dst) arg
   | Store (arg1, arg2) -> sprintf "store %s %s" arg1 arg2
   | Load (dst, arg) -> sprintf "%s load %s" (dest_to_string dst) arg

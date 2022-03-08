@@ -164,21 +164,22 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
 
   (**Removes [n] and its associated edges from [g]*)
   let del_vert g v =
-    let filter es = ES.filter ~f:(fun e -> e |> snd |> VI.equal v) es in
+    let filter es = ES.filter ~f:(fun e -> e |> snd |> VI.equal v |> not) es in
     let preds_map_1 =
-      ES.fold
+      VS.fold
         ~init:g.preds_map
-        ~f:(fun acc s ->
-          let data = s |> snd |> find acc |> filter in
-          VM.set ~key:(snd s) ~data acc)
-        (preds_e g v)
+        ~f:(fun map s ->
+          let data = s |> find map |> filter in
+          VM.set ~key:s ~data map)
+        (succs g v)
     in
     let succs_map_1 =
-      ES.fold ~init:g.succs_map
-        ~f:(fun acc p ->
-          let data = p |> snd |> find acc |> filter in
-          VM.set ~key:(snd p) ~data acc)
-        (succs_e g v)
+      VS.fold
+        ~init:g.succs_map
+        ~f:(fun map p ->
+          let data = p |> find map |> filter in
+          VM.set ~key:p ~data map)
+        (preds g v)
     in
     { succs_map = VM.remove succs_map_1 v; preds_map = VM.remove preds_map_1 v; }
 

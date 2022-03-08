@@ -1,12 +1,10 @@
 open! Core
 open Util
+open Common
 
 type block_t = string * (Instr.t Array.t)
 
 type edge_lbl = True | False | Jump | Next [@@deriving sexp]
-
-module SM = String.Map
-module SS = String.Set
 
 module G =
   Graph.MakeLabelled(
@@ -54,10 +52,10 @@ let next_block (instrs : Instr.t list) (info : t) (i : int ref) :
     | (Jmp dst as h) :: t -> (h :: curr, t, add_edge ~src ~edg:Jump ~dst g)
     | (Br (_, l1, l2) as h) :: t ->
         let g1 = add_edge ~src ~edg:True ~dst:l1 g in
-        let g2 = add_edge ~src ~edg:True ~dst:l2 g1 in
+        let g2 = add_edge ~src ~edg:False ~dst:l2 g1 in
         (h :: curr, t, g2)
     | (Ret _ as h) :: t -> (h :: curr, t, g)
-    | h :: (Label blk :: _ as rst) ->
+    | h :: ((Label blk :: _) as rst) ->
         (h :: curr, rst, add_edge ~src ~edg:Next ~dst:blk g)
     | h :: t -> step (h :: curr) t g
   in
@@ -73,6 +71,7 @@ let rec process_instrs instrs info i =
   | _ ->
       let res = next_block instrs info i in
       process_instrs (fst res) (snd res) i
+
 
 let clean func =
   let reachable =
@@ -113,18 +112,18 @@ let of_json (json: Yojson.Basic.t) =
   in
   let name = json |> member "name" |> to_string in
   let args =
-    json |> member "args" |> Common.to_list_nonnull |> List.map ~f:arg_of_json
+    json |> member "args" |> to_list_nonnull |> List.map ~f:arg_of_json
   in
   let ret_type = json |> member "type" |> Bril_type.of_json_opt in
   let instructions =
-    json |> member "instrs" |> Common.to_list_nonnull |> List.map ~f:Instr.of_json
+    json |> member "instrs" |> to_list_nonnull |> List.map ~f:Instr.of_json
   in
   let init_info = {
       args; name; ret_type; order = []; graph = G.empty; map = String.Map.empty;
     }
   in
-  process_instrs instructions init_info (ref 0) |> fun inf ->
-  { inf with order = List.rev inf.order }
+  process_instrs instructions init_info (ref 0)
+  |> (fun inf -> { inf with order = List.rev inf.order }) |> clean
 
 
 let to_json (g: t) : Yojson.Basic.t =
@@ -149,24 +148,24 @@ let to_json (g: t) : Yojson.Basic.t =
 
 let block_to_dot g b =
   let buf = Buffer.create 10 in
-  Buffer.add_char buf '{';
-  Buffer.add_string buf b;
+  let put s = Buffer.add_string buf s in
+  put "<<table cellspacing=\"0\">\n";
+  put (sprintf "<tr><td bgcolor=\"Green\">%s</td></tr>\n" b);
   let arr = SM.find_exn g.map b |> snd in
   Array.iter arr ~f:(fun instr ->
-      Buffer.add_char buf '|';
-      Buffer.add_string buf (Instr.to_string instr));
-  Buffer.add_char buf '}';
+      instr |> Instr.to_string |> sprintf "<tr><td>%s</td></tr>\n" |> put);
+  put"</table>>";
   Buffer.contents buf
 
 
 let to_dot ~names_only oc g =
-  let nf = (fun n -> sprintf "%s [label=\"%s\" shape=\"record\"];\n" n
-                     (block_to_dot g n))
+  let nf = (fun n -> sprintf "\"%s\" [label=%s shape=\"plaintext\"];\n"
+                       n (block_to_dot g n))
   in
   let ef = (fun s e d -> begin match e with
              | True -> "[color=\"blue\"]"
              | False -> "[color=\"red\"]"
-             | _ -> "" end |> sprintf "%s -> %s %s;\n" s d)
+             | _ -> "" end |> sprintf "\"%s\" -> \"%s\" %s;\n" s d)
   in
   if names_only
   then G.to_dot g.graph ~oc ~nodes:g.order ~label:g.name ~ef

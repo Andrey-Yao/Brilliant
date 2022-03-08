@@ -7,13 +7,13 @@ open Ir
 let opt_local opt blck =
   ignore opt; blck
 
-
-let opt_global opt func = func
-
+(**Global optimizations*)
+let opt_global opt func =
+  ignore opt; func
 
 (**Interprocedural optimizations*)
-let opt_universal opt prog = prog
-
+let opt_universal opt prog =
+  ignore opt; prog
 
 let optimize_single prog optimization =
   let opt = String.slice optimization 1 0 in
@@ -27,7 +27,6 @@ let optimize_single prog optimization =
      List.map ~f:(opt_global opt) prog
   | 'i' -> opt_universal opt prog
   | _ -> failwith "Unsupported optimization type"
-      
 
 let process ~opts ~srcpath ~outpath =
   let ic =
@@ -40,12 +39,16 @@ let process ~opts ~srcpath ~outpath =
     | Some p -> Out_channel.create p in
   let prog = ic |> Basic.from_channel |> Bril.of_json in
   let doms = List.map ~f:Cfg.Dominance.dominators prog in
-  List.fold opts
+  let prog_new = List.fold opts
     ~init: prog
-    ~f:(fun acc e -> optimize_single acc e)
-  |> Bril.to_json |> (Basic.to_channel oc);
+    ~f:(fun acc e -> optimize_single acc e) in
+  prog_new |> Bril.to_json |> (Basic.to_channel oc);
   In_channel.close ic;
-  Out_channel.close oc
+  Out_channel.close oc;
+  let oc_dot = Out_channel.create "tmp.dot" in
+  List.iter prog_new ~f:(Func.to_dot ~names_only:false oc_dot);
+  Out_channel.close oc_dot
+  
 
  
 let command =

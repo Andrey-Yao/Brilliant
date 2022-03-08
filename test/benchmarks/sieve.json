@@ -1,0 +1,653 @@
+{
+  "functions": [
+    {
+      "args": [
+        {
+          "name": "table",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "name": "tableSize",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "idx",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "zero",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "label": "print.unmarked.for.cond"
+        },
+        {
+          "args": [
+            "idx",
+            "tableSize"
+          ],
+          "dest": "continue",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "continue"
+          ],
+          "labels": [
+            "print.unmarked.for.body",
+            "print.unmarked.for.end"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "print.unmarked.for.body"
+        },
+        {
+          "args": [
+            "table",
+            "idx"
+          ],
+          "dest": "offsetTable",
+          "op": "ptradd",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "args": [
+            "offsetTable"
+          ],
+          "dest": "marked",
+          "op": "load",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "marked"
+          ],
+          "labels": [
+            "print.unmarked.skip.print",
+            "print.unmarked.print"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "print.unmarked.print"
+        },
+        {
+          "args": [
+            "idx"
+          ],
+          "op": "print"
+        },
+        {
+          "label": "print.unmarked.skip.print"
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "args": [
+            "idx",
+            "one"
+          ],
+          "dest": "idx",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "print.unmarked.for.cond"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "print.unmarked.for.end"
+        },
+        {
+          "op": "ret"
+        }
+      ],
+      "name": "printUnmarked"
+    },
+    {
+      "args": [
+        {
+          "name": "table",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "name": "tableSize",
+          "type": "int"
+        },
+        {
+          "name": "currentP",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "zero",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "args": [
+            "currentP"
+          ],
+          "dest": "p",
+          "op": "id",
+          "type": "int"
+        },
+        {
+          "label": "find.next.p.continue"
+        },
+        {
+          "args": [
+            "p",
+            "one"
+          ],
+          "dest": "p",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "p",
+            "tableSize"
+          ],
+          "dest": "inBounds",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "inBounds"
+          ],
+          "labels": [
+            "find.next.p.in.bounds",
+            "find.next.p.not.in.bounds"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "find.next.p.in.bounds"
+        },
+        {
+          "args": [
+            "table",
+            "p"
+          ],
+          "dest": "offsetTable",
+          "op": "ptradd",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "args": [
+            "offsetTable"
+          ],
+          "dest": "marked",
+          "op": "load",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "marked"
+          ],
+          "labels": [
+            "find.next.p.continue",
+            "find.next.p.done"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "find.next.p.done"
+        },
+        {
+          "args": [
+            "p"
+          ],
+          "op": "ret"
+        },
+        {
+          "label": "find.next.p.not.in.bounds"
+        },
+        {
+          "args": [
+            "zero"
+          ],
+          "op": "ret"
+        }
+      ],
+      "name": "findNextP",
+      "type": "int"
+    },
+    {
+      "args": [
+        {
+          "name": "table",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "name": "tableSize",
+          "type": "int"
+        },
+        {
+          "name": "p",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "zero",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "dest": "t",
+          "op": "const",
+          "type": "bool",
+          "value": true
+        },
+        {
+          "dest": "m",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "label": "mark.multiples.continue"
+        },
+        {
+          "args": [
+            "m",
+            "one"
+          ],
+          "dest": "m",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "m",
+            "p"
+          ],
+          "dest": "mTimesP",
+          "op": "mul",
+          "type": "int"
+        },
+        {
+          "args": [
+            "table",
+            "mTimesP"
+          ],
+          "dest": "offsetTable",
+          "op": "ptradd",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "args": [
+            "mTimesP",
+            "tableSize"
+          ],
+          "dest": "finished",
+          "op": "ge",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "finished"
+          ],
+          "labels": [
+            "mark.multiples.done",
+            "mark.multiples.store"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "mark.multiples.store"
+        },
+        {
+          "args": [
+            "offsetTable",
+            "t"
+          ],
+          "op": "store"
+        },
+        {
+          "labels": [
+            "mark.multiples.continue"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "mark.multiples.done"
+        },
+        {
+          "op": "ret"
+        }
+      ],
+      "name": "markMultiples"
+    },
+    {
+      "args": [
+        {
+          "name": "table",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "name": "tableSize",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "zero",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "dest": "two",
+          "op": "const",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "dest": "f",
+          "op": "const",
+          "type": "bool",
+          "value": false
+        },
+        {
+          "dest": "t",
+          "op": "const",
+          "type": "bool",
+          "value": true
+        },
+        {
+          "args": [
+            "table",
+            "t"
+          ],
+          "op": "store"
+        },
+        {
+          "args": [
+            "table",
+            "one"
+          ],
+          "dest": "offsetTable",
+          "op": "ptradd",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "args": [
+            "offsetTable",
+            "t"
+          ],
+          "op": "store"
+        },
+        {
+          "args": [
+            "two"
+          ],
+          "dest": "idx",
+          "op": "id",
+          "type": "int"
+        },
+        {
+          "label": "populate.table.for.cond"
+        },
+        {
+          "args": [
+            "idx",
+            "tableSize"
+          ],
+          "dest": "continue",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "continue"
+          ],
+          "labels": [
+            "populate.table.for.body",
+            "populate.table.for.end"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "populate.table.for.body"
+        },
+        {
+          "args": [
+            "table",
+            "idx"
+          ],
+          "dest": "offsetTable",
+          "op": "ptradd",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "args": [
+            "offsetTable",
+            "f"
+          ],
+          "op": "store"
+        },
+        {
+          "args": [
+            "idx",
+            "one"
+          ],
+          "dest": "idx",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "populate.table.for.cond"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "populate.table.for.end"
+        },
+        {
+          "op": "ret"
+        }
+      ],
+      "name": "populateTable"
+    },
+    {
+      "args": [
+        {
+          "name": "n",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "dest": "zero",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "two",
+          "op": "const",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "args": [
+            "n"
+          ],
+          "dest": "table",
+          "op": "alloc",
+          "type": {
+            "ptr": "bool"
+          }
+        },
+        {
+          "args": [
+            "table",
+            "n"
+          ],
+          "funcs": [
+            "populateTable"
+          ],
+          "op": "call"
+        },
+        {
+          "args": [
+            "two"
+          ],
+          "dest": "p",
+          "op": "id",
+          "type": "int"
+        },
+        {
+          "label": "print.primes.up.to.continue"
+        },
+        {
+          "args": [
+            "table",
+            "n",
+            "p"
+          ],
+          "funcs": [
+            "markMultiples"
+          ],
+          "op": "call"
+        },
+        {
+          "args": [
+            "table",
+            "n",
+            "p"
+          ],
+          "dest": "p",
+          "funcs": [
+            "findNextP"
+          ],
+          "op": "call",
+          "type": "int"
+        },
+        {
+          "args": [
+            "p",
+            "zero"
+          ],
+          "dest": "finished",
+          "op": "eq",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "finished"
+          ],
+          "labels": [
+            "print.primes.up.to.done",
+            "print.primes.up.to.continue"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "print.primes.up.to.done"
+        },
+        {
+          "args": [
+            "table",
+            "n"
+          ],
+          "funcs": [
+            "printUnmarked"
+          ],
+          "op": "call"
+        },
+        {
+          "args": [
+            "table"
+          ],
+          "op": "free"
+        }
+      ],
+      "name": "printPrimesUpTo"
+    },
+    {
+      "args": [
+        {
+          "name": "input",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "args": [
+            "input"
+          ],
+          "funcs": [
+            "printPrimesUpTo"
+          ],
+          "op": "call"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}

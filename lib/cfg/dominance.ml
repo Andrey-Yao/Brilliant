@@ -72,32 +72,25 @@ let dominators (g: Ir.Func.t): t =
 
 
 (**This gives a tree*)
-let bfs order (doms: t) =
-  match order with
-  | [] -> G.empty
-  | root :: _ -> 
-     let set = String.Hash_set.create () in
-     let edges = Queue.create () in
-     let queue = Queue.create () in
-     Queue.enqueue queue root;
-     Hash_set.add set root;
-     while queue |> Queue.is_empty |> not do
-       let u = Queue.dequeue_exn queue in
-       G.VS.iter (G.succs doms u)
-         ~f:(fun v ->
-           if String.(<>) u v && not (Hash_set.mem set v)
-           then (Queue.enqueue queue v;
-                 Hash_set.add set v;
-                 Queue.enqueue edges (u, v))
-           else ())
-     done;
-     Queue.fold edges
-       ~init: G.empty
-       ~f:(fun acc (u, v) -> G.add_edge acc ~src:u ~dst:v)
+let spanning_tree root (doms: t) =
+  let set = String.Hash_set.create () in
+  let edges = Queue.create () in
+  let queue = Queue.create () in
+  Queue.enqueue queue root;
+  Hash_set.add set root;
+  while queue |> Queue.is_empty |> not do
+    let u = Queue.dequeue_exn queue in
+    G.VS.iter (G.succs doms u)
+      ~f:(fun v ->
+        if String.(<>) u v && not (Hash_set.mem set v)
+        then (Queue.enqueue queue v;
+              Hash_set.add set v;
+              Queue.enqueue edges (u, v))
+        else ())
+  done;
+  Queue.fold edges
+    ~init: G.empty
+    ~f:(fun acc (u, v) -> G.add_edge acc ~src:u ~dst:v)
 
 
-let dominance_frontier (_: G.t) = ()
-
-(*
-let to_dot doms 
- *)
+let dominance_frontier (doms: t) b = ()

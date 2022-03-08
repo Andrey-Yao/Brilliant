@@ -31,5 +31,5 @@ val to_dot : names_only:bool -> Out_channel.t -> t -> unit
 
 val map_blocks : f:(block_t -> block_t) -> t -> t
 
-(**Cleans [graph] and purges nodes reachable from entry*)
+(**Cleans [graph] and purges nodes unreachable from entry*)
 val clean : t -> t
