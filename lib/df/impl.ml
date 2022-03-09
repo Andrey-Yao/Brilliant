@@ -32,15 +32,15 @@ module ReachingDefinitionsF : Frame = struct
 
   let equal = Strmap.equal VS.equal
 
-  let transfer p block =
-    Array.foldi ~init:p
+  let transfer p name block =
+    List.foldi block
+      ~init:p
       ~f:(fun i map inst ->
         match Instr.dest inst with
         | None -> map
         | Some (key, _) ->
-            let data = VS.singleton { block_name = fst block; instr_num = i } in
+            let data = VS.singleton { block_name = name; instr_num = i } in
             Strmap.set ~key ~data map)
-      (snd block)
 end
 
 (*

@@ -72,7 +72,7 @@ let dominators (g: Ir.Func.t): t =
 
 
 (**This gives a tree*)
-let spanning_tree root (doms: t) =
+let dominance_tree root (doms: t) =
   let set = String.Hash_set.create () in
   let edges = Queue.create () in
   let queue = Queue.create () in
@@ -93,4 +93,24 @@ let spanning_tree root (doms: t) =
     ~f:(fun acc (u, v) -> G.add_edge acc ~src:u ~dst:v)
 
 
-let dominance_frontier (doms: t) b = ()
+let dominance_frontier_single (doms: t) (cfg: CFG.t) b =
+  (*Nodes one edge away from the submissive set*)
+  let frontierish =
+    G.VS.fold (G.succs doms b)
+      ~init: CFG.VS.empty
+      ~f:(fun acc s -> s |> CFG.succs cfg |> CFG.VS.union acc)
+    |> CFG.VS.to_list |> G.VS.of_list in
+  G.VS.diff frontierish (G.succs doms b)
+
+
+let dominance_frontier (doms: t) (func: Ir.Func.t) =
+  List.fold func.order
+    ~init: G.empty
+    ~f:(fun g1 src ->
+      G.VS.fold (dominance_frontier_single doms func.graph src)
+        ~init: g1
+        ~f:(fun g2 dst -> G.add_edge g2 ~src ~dst))
+
+
+let to_dot oc doms (func: Ir.Func.t) =
+  G.to_dot ~oc ~nodes:func.order ~label:func.name doms

@@ -5,7 +5,11 @@ type t = G.t
 
 val dominators: Ir.Func.t -> t
 
-val spanning_tree: string -> t -> t
+val dominance_tree: string -> t -> t
+
+(**Dominance frontier*)
+val dominance_frontier: t -> Ir.Func.t -> t
+
 
 (*
 val to_dot: oc:Stdio.Out_channel.t -> nodes:(string list) ->

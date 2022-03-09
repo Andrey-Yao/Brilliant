@@ -10,7 +10,7 @@ module G: Sig.Labelled
         and type e = edge_lbl
 
 (**[(block_name, instrs)]*)
-type block_t = string * Instr.t Array.t
+type block_t = Instr.t List.t
 
 type t = {
     map : block_t String.Map.t; (*yeah*)

@@ -19,7 +19,7 @@ module Forward (F : Frame) = struct
             ~init:F.top preds
         in
         let old_outb = getdata b |> snd in
-        let new_outb = F.transfer inb (String.Map.find_exn funct.map b) in
+        let new_outb = F.transfer inb b (String.Map.find_exn funct.map b) in
         let wlist_new =
           if F.equal new_outb old_outb then rest
           else (G.succs funct.graph b |> G.VS.to_list) @ rest
@@ -61,7 +61,7 @@ module Backward (F : Frame) = struct
             ~init:F.top succs
         in
         let old_inb = getdata b |> fst in
-        let new_inb = F.transfer outb (String.Map.find_exn funct.map b) in
+        let new_inb = F.transfer outb b (String.Map.find_exn funct.map b) in
         let wlist_new =
           if F.equal old_inb new_inb then rest
           else (G.preds funct.graph b |> G.VS.to_list) @ rest

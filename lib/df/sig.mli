@@ -4,7 +4,7 @@ module type Frame = sig
   val top : p
   val meet : p -> p -> p
   val equal : p -> p -> bool
-  val transfer : p -> Ir.Func.block_t -> p
+  val transfer : p -> string -> Ir.Func.block_t -> p
 end
 
 module type DataFlow = sig

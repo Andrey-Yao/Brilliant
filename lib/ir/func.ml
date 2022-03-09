@@ -2,7 +2,7 @@ open! Core
 open Util
 open Common
 
-type block_t = string * (Instr.t Array.t)
+type block_t = Instr.t List.t
 
 type edge_lbl = True | False | Jump | Next [@@deriving sexp]
 
@@ -60,8 +60,8 @@ let next_block (instrs : Instr.t list) (info : t) (i : int ref) :
     | h :: t -> step (h :: curr) t g
   in
   let curr, rest, g = step [] instrs info.graph in
-  let arr = Array.of_list_rev curr in
-  let map1 = String.Map.add_exn ~key:name ~data:(name, arr) info.map in
+  let lst = List.rev curr in
+  let map1 = String.Map.add_exn ~key:name ~data:lst info.map in
   (rest, { info with order = name :: info.order; map = map1; graph = g })
 
 (** Updates [info] recursively *)
@@ -128,7 +128,7 @@ let of_json (json: Yojson.Basic.t) =
 
 let to_json (g: t) : Yojson.Basic.t =
   let instrs =
-    List.map ~f:(fun n -> SM.find_exn g.map n |> snd |> Array.to_list) g.order
+    List.map ~f:(fun n -> SM.find_exn g.map n) g.order
     |> List.concat in 
   `Assoc
     ([
@@ -151,16 +151,16 @@ let block_to_dot g b =
   let put s = Buffer.add_string buf s in
   put "<<table cellspacing=\"0\">\n";
   put (sprintf "<tr><td bgcolor=\"Green\">%s</td></tr>\n" b);
-  let arr = SM.find_exn g.map b |> snd in
-  Array.iter arr ~f:(fun instr ->
+  List.iter (SM.find_exn g.map b)
+    ~f:(fun instr ->
       instr |> Instr.to_string |> sprintf "<tr><td>%s</td></tr>\n" |> put);
   put"</table>>";
   Buffer.contents buf
 
 
-let to_dot ~names_only oc g =
+let to_dot ~names_only oc f =
   let nf = (fun n -> sprintf "\"%s\" [label=%s shape=\"plaintext\"];\n"
-                       n (block_to_dot g n))
+                       n (block_to_dot f n))
   in
   let ef = (fun s e d -> begin match e with
              | True -> "[color=\"blue\"]"
@@ -168,11 +168,10 @@ let to_dot ~names_only oc g =
              | _ -> "" end |> sprintf "\"%s\" -> \"%s\" %s;\n" s d)
   in
   if names_only
-  then G.to_dot g.graph ~oc ~nodes:g.order ~label:g.name ~ef
-  else G.to_dot g.graph ~oc ~nodes:g.order ~label:g.name ~nf ~ef
+  then G.to_dot f.graph ~oc ~nodes:f.order ~label:f.name ~ef
+  else G.to_dot f.graph ~oc ~nodes:f.order ~label:f.name ~nf ~ef
 
 
 let map_blocks ~f func =
   let map_new = SM.map ~f func.map in
   { func with map = map_new }
-  

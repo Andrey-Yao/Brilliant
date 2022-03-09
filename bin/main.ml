@@ -44,13 +44,9 @@ let process ~opts ~srcpath ~outpath =
     ~f:(fun acc e -> optimize_single acc e) in
   prog_new |> Bril.to_json |> (Basic.to_channel oc);
   In_channel.close ic;
-  Out_channel.close oc;
-  let oc_dot = Out_channel.create "tmp.dot" in
-  List.iter prog_new ~f:(Func.to_dot ~names_only:false oc_dot);
-  Out_channel.close oc_dot
+  Out_channel.close oc
   
 
- 
 let command =
   Core.Command.basic
     ~summary:"Brilliant, the compiler optimizer for BRIL"
@@ -61,15 +57,18 @@ let command =
         ~doc:
         "What to output. Default is just the json file.\n\
          Additional options: [cfg]"
-    and outputs =
-      flag "-O" (listed string)
-        ~doc:"What to output, besides the transformed program"
+    and genCfg =
+      flag "-cfg" (optional string)
+        ~doc:"File name to output the cfg dot file"
+    and genDom =
+      flag "-dom" (optional string)
+        ~doc:"File name to output the dominance graph"
     and outpath =
       flag "-D" (optional string)
-        ~doc:"<path> Specify where to place the generated files"
+        ~doc:"<path> Specify where to place the process program"
     and srcpath =
       flag "-S" (optional string)
-        ~doc:"<path> Specify where to find input source files" in
+        ~doc:"<path> Specify where to find input source file" in
     fun () -> process ~opts ~srcpath ~outpath)
 
 

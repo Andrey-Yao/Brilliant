@@ -35,7 +35,9 @@ module MakeUnlabelled(VI: VIngredient) = struct
       preds_map: VS.t VM.t
     }
      
-  let empty = { succs_map = VM.empty; preds_map = VM.empty }
+  let empty = {
+      succs_map = VM.empty;
+      preds_map = VM.empty }
   
   let find m v =
     match VM.find m v with
