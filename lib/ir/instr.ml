@@ -81,8 +81,7 @@ let dest = function
   | Br (_, _, _)
   | Ret _ | Print _
   | Guard (_, _)
-  | Free _ | Store _ ->
-      None
+  | Free _ | Store _ -> None
 
 let set_dest dest t : t option =
   match t with
@@ -125,7 +124,11 @@ let set_args args t : t option =
   | Store (_, _), [ a1; a2 ] -> Some (Store (a1, a2))
   | Load (dst, _), [ a ] -> Some (Load (dst, a))
   | PtrAdd (dst, _, _), [ a1; a2 ] -> Some (PtrAdd (dst, a1, a2))
-  | instr, [] -> Some instr
+  | Phi (dst, lst), _ -> begin
+      let lst_new =  List.map2 args lst ~f:(fun a (l, _) -> (l, a)) in
+      match lst_new with
+      | List.Or_unequal_lengths.Ok l -> Some (Phi (dst, l))
+      | _ -> None end
   | _ -> None
 
 let of_json json =
