@@ -10,7 +10,7 @@ let opt_local opt blck =
 (**Global optimizations*)
 let opt_global opt func =
   if String.(opt = "SSA")
-  then func |> Cfg.Ssa.preprocess |> fst
+  then Cfg.Ssa.to_ssa func
   else func
 
 (**Interprocedural optimizations*)
@@ -48,12 +48,11 @@ let process ~opts ~srcpath ~outpath ~genCfg =
     | None -> Out_channel.stdout
     | Some p -> Out_channel.create p in
   let prog : Bril.t = ic |> Basic.from_channel |> Bril.of_json in
-  let doms = List.map ~f:Cfg.Dominance.dominators prog in
-  let prog_opt = List.fold opts
+  let prog' = List.fold opts
                    ~init: prog
                    ~f:(fun acc e -> optimize_single acc e) in
-  process_genCfg ~genCfg prog_opt;
-  prog_opt |> Bril.to_json |> Basic.to_channel oc;
+  process_genCfg ~genCfg prog';
+  prog' |> Bril.to_json |> Basic.to_channel oc;
   In_channel.close ic;
   Out_channel.close oc
   

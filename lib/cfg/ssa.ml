@@ -143,7 +143,7 @@ let for_loop_1_once instr counts stacks =
   | None -> instr
 
 
-let for_loop_2_once y instr stacks =
+let for_loop_2_once y stacks instr =
   let open Instr in
   match instr with
   | Phi (dst, lst) ->
@@ -156,22 +156,55 @@ let for_loop_2_once y instr stacks =
   | _ -> instr
 
 
-let rec rename_block_help dt b2i cfg block stacks counts =
+let rec rename_block_help dt b2i cfg stacks counts x =
+  let instrs = SM.find_exn b2i x in
   (*Old LHS to be popped at the end of functions*)
+  let old_asses = List.filter_map instrs ~f:Instr.dest in
+  let instrs' =
+    List.map instrs
+      ~f:(fun ins -> for_loop_1_once ins counts stacks) in
+  let b2i' = SM.set b2i ~key:x ~data:instrs' in
+  let b2i'' =
+    Func.G.VS.fold (Func.G.succs cfg x)
+      ~init: b2i'
+      ~f:(fun map y ->
+        let ins = SM.find_exn map y in
+        let ins' = List.map ins ~f:(for_loop_2_once y stacks) in
+        SM.set map ~key:y ~data:ins') in
+  let b2i''' = Dom.G.VS.fold (Dom.G.succs dt x)
+                 ~init: b2i''
+                 ~f:(fun map y ->
+                   rename_block_help dt map cfg stacks counts y) in
+  List.iter old_asses
+    ~f:(fun dst ->
+      let i = dst |> fst |> parse in
+      stacks.(i) <- List.tl_exn stacks.(i));
+  b2i'''
   
-       
 
 
-let rename_blks domtree (func: Func.t) =
-  let num_args = List.length func.args in
-  let stacks = Array.create ~len:num_args [] in
-  let counts = Array.create ~len:num_args 0 in
+let rename_blks domtree num_vars (func: Func.t) : Func.t =
+  let stacks = Array.create ~len:num_vars [] in
+  let counts = Array.create ~len:num_vars 0 in
   (*Because func args aliases are already defined in decoy*)
-  for i = 0 to num_args - 1 do
-    stacks.(i) <- 1 :: stacks.(i);
+  for i = 0 to (List.length func.args) - 1 do
+    stacks.(i) <- 0 :: stacks.(i);
     counts.(i) <- 1
   done;
   (*Not decoy!! Actual entry block*)
   let entry_real = List.nth_exn func.order 1 in
-  rename_block_help domtree func.map func.graph
-    entry_real stacks counts
+  let b2i = rename_block_help domtree func.map func.graph
+              stacks counts entry_real in
+  { func with map = b2i }
+
+
+let to_ssa (func: Func.t) =
+  let func', num_vars = preprocess func in
+  let entry = List.hd_exn func'.order in
+  let var2typndefs = vars_to_defs_and_typs func' num_vars in
+  let dominators = Dom.dominators func' in
+  let domfront = Dom.dominance_frontier dominators func' in
+  let domtree = Dominance.dominance_tree entry dominators in
+  let func'' = insert_phis func' domfront var2typndefs in
+  rename_blks domtree num_vars func''
+  
