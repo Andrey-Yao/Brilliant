@@ -158,7 +158,7 @@ let block_to_dot g b =
   Buffer.contents buf
 
 
-let to_dot ~names_only oc f =
+let to_dot ~verbose ~oc f =
   let nf = (fun n -> sprintf "\"%s\" [label=%s shape=\"plaintext\"];\n"
                        n (block_to_dot f n))
   in
@@ -167,7 +167,7 @@ let to_dot ~names_only oc f =
              | False -> "[color=\"red\"]"
              | _ -> "" end |> sprintf "\"%s\" -> \"%s\" %s;\n" s d)
   in
-  if names_only
+  if verbose
   then G.to_dot f.graph ~oc ~nodes:f.order ~label:f.name ~ef
   else G.to_dot f.graph ~oc ~nodes:f.order ~label:f.name ~nf ~ef
 

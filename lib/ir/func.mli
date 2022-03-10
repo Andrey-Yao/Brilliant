@@ -27,7 +27,7 @@ val of_json : Yojson.Basic.t -> t
 (**Outputs to json file*)
 val to_json : t -> Yojson.Basic.t
 
-val to_dot : names_only:bool -> Out_channel.t -> t -> unit
+val to_dot : verbose:bool -> oc:Out_channel.t -> t -> unit
 
 val map_blocks : f:(block_t -> block_t) -> t -> t
 

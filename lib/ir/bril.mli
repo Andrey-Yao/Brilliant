@@ -9,4 +9,4 @@ type t = Func.t list
 
 val of_json : Yojson.Basic.t -> t
 val to_json : t -> Yojson.Basic.t
-(* val to_string : t -> string *)
+val to_dot : verbose:bool -> oc:Out_channel.t -> t -> unit

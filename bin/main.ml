@@ -9,7 +9,9 @@ let opt_local opt blck =
 
 (**Global optimizations*)
 let opt_global opt func =
-  ignore opt; func
+  if String.(opt = "SSA")
+  then func |> Cfg.Ssa.preprocess |> fst
+  else func
 
 (**Interprocedural optimizations*)
 let opt_universal opt prog =
@@ -28,7 +30,15 @@ let optimize_single prog optimization =
   | 'i' -> opt_universal opt prog
   | _ -> failwith "Unsupported optimization type"
 
-let process ~opts ~srcpath ~outpath =
+let process_genCfg ~genCfg prog : unit =
+  let fname = match genCfg with
+    | None -> "tmp_cfg.dot"
+    | Some f -> f in
+  let oc = Out_channel.create fname in
+  Bril.to_dot prog ~verbose:false ~oc;
+  Out_channel.close oc
+
+let process ~opts ~srcpath ~outpath ~genCfg =
   let ic =
     match srcpath with
     | None -> In_channel.stdin
@@ -37,12 +47,13 @@ let process ~opts ~srcpath ~outpath =
     match outpath with
     | None -> Out_channel.stdout
     | Some p -> Out_channel.create p in
-  let prog = ic |> Basic.from_channel |> Bril.of_json in
+  let prog : Bril.t = ic |> Basic.from_channel |> Bril.of_json in
   let doms = List.map ~f:Cfg.Dominance.dominators prog in
-  let prog_new = List.fold opts
-    ~init: prog
-    ~f:(fun acc e -> optimize_single acc e) in
-  prog_new |> Bril.to_json |> (Basic.to_channel oc);
+  let prog_opt = List.fold opts
+                   ~init: prog
+                   ~f:(fun acc e -> optimize_single acc e) in
+  process_genCfg ~genCfg prog_opt;
+  prog_opt |> Bril.to_json |> Basic.to_channel oc;
   In_channel.close ic;
   Out_channel.close oc
   
@@ -69,7 +80,7 @@ let command =
     and srcpath =
       flag "-S" (optional string)
         ~doc:"<path> Specify where to find input source file" in
-    fun () -> process ~opts ~srcpath ~outpath)
+    fun () -> process ~opts ~srcpath ~outpath ~genCfg)
 
 
 let () = Command.run ~version:"0.0.1" command

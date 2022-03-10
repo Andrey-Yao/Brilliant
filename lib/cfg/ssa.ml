@@ -9,12 +9,13 @@ module SHT = Hashtbl.Make(String)
 (**Returns [func', n] where [func'] is [func] with all
    occurence of variables (including in the arguments)
    replaced with [v1,..., vn], and [n] is the number of
-   such arguments. This makes creating new variable
+   such variables. This makes creating new variable
    names much easier later. *)
-let global_variable_rename (func: Func.t) =
+let preprocess (func: Func.t) =
   let func_args = List.map func.args ~f:fst in
   (*Map from var name to index*)
   let v2num = SHT.create () in
+  (*Inits v2num to map arg0,...,argk to 0,...,k*)
   List.iteri func_args
     ~f:(fun i v -> SHT.set v2num ~key:v ~data:i);
   let map_var v =
@@ -36,20 +37,35 @@ let global_variable_rename (func: Func.t) =
          ~default:instr1
     | None -> instr1 in
   let process_blk blk = List.map blk ~f:instr_folder in
-  let new_map = SM.map func.map ~f:process_blk in
-  let new_func_args =
-    List.map func.args
-      ~f:(fun (a, t) -> sprintf "v%d" (SHT.find_exn v2num a), t) in
-  { func with map = new_map; args = new_func_args },
-  SHT.length v2num
+  (*If func has arguments, add extra block at start*)
+  let decoy_content = match func.args with
+    | [] -> [ Instr.Nop ]
+    | lst -> begin
+        (*Copies argk into vk for each k*)
+        List.mapi lst
+          ~f:(fun i (a, t) ->
+            let dst = (sprintf "v%d_0" i, t) in
+            Instr.Unary (dst, Op.Unary.Id, a)) end in
+  let decoy = "_decoy" in
+  let new_map = SM.set (SM.map func.map ~f:process_blk)
+                  ~key:decoy ~data:decoy_content in
+  let new_graph = Func.G.add_edge func.graph
+                    ~src:decoy ~edg:Func.Next
+                    ~dst:(List.hd_exn func.order) in
+  ({func with map = new_map;
+              graph = new_graph;
+              order = decoy :: func.order},
+   SHT.length v2num)
+
 
 (**[parse "v6"] is [6], for example*)
 let parse var = String.slice var 1 0 |> int_of_string
 
 (**Gives a map from variable names to their types and the
    blocks where they have definitions*)
-let vars_to_defs_and_typs (func: Func.t) n =
-  let arr = Array.create ~len:n (Bril_type.BoolType, SS.empty) in
+let vars_to_defs_and_typs (func: Func.t) num_vars =
+  let arr = Array.create ~len:num_vars
+              (Bril_type.BoolType, SS.empty) in
   let open Func.G in
   let add_defs_and_typs b =
     List.iter (SM.find_exn func.map b)
@@ -62,24 +78,31 @@ let vars_to_defs_and_typs (func: Func.t) n =
   List.iter func.order ~f:add_defs_and_typs;
   arr
 
-let insert_phi (func: Func.t) domfrt var2typndefs =
-  (*Tail recursive and runtime is O(#phi-nodes) in instrs <3*)
-  let rec has_phi_for_v instrs v =
-    let open Instr in
-    match instrs with
-    | (Phi ((def, _), _)) :: _ when String.equal def v -> true
-    | (Phi _) :: t -> has_phi_for_v t v
-    | _ -> false in
+(**Adding prepending phi function. Aware of labels*)
+let stick_phi_in_funcs phi funcs =
+  match funcs with
+  | (Instr.Label _ as h) :: t -> h :: phi :: t
+  | _ -> phi :: funcs 
+
+(**First part of the algorithm... *)
+let insert_phis (func: Func.t) domfrt var2typndefs =
+  let num_vars = Array.length var2typndefs in
+  (*has_phi_for_v[i] is the set of blocks with phi vi*)
+  let has_phi_for_v = Array.create ~len:num_vars SS.empty in
   (*b2i is map from blocknames to instrs*)
   let folder_dom vi = fun b2i b ->
-    let v = sprintf "v%d" vi in
+    let var = sprintf "v%d" vi in
     let instrs = SM.find_exn b2i b in
     let vtnd = var2typndefs.(vi) in
     let instrs_new =
-      if has_phi_for_v instrs v then instrs
-      else let arg = Dom.G.succs domfrt b |> Dom.G.VS.to_list
-                     |> List.map ~f:(fun lbl -> (lbl, v)) in
-           Instr.Phi ((v, fst vtnd), arg) :: instrs in
+      let hpfvi = has_phi_for_v.(vi) in
+      (* v := phi l1 v ... ln v, where n is number of preds in cfg *)
+      if SS.mem hpfvi b then instrs
+      else let args = Func.G.preds func.graph b |> Func.G.VS.to_list
+                      |> List.map ~f:(fun lbl -> (lbl, var)) in
+           has_phi_for_v.(vi) <- SS.add hpfvi b;
+           stick_phi_in_funcs (Instr.Phi ((var, fst vtnd), args)) instrs
+    in
     let pair = var2typndefs.(vi) in
     var2typndefs.(vi) <- (fst pair, SS.add (snd pair) b);
     SM.set b2i ~key:b ~data:instrs_new in
@@ -95,48 +118,60 @@ let insert_phi (func: Func.t) domfrt var2typndefs =
   in { func with map = b2i_new }
 
 (**[esrap] is the opposite of [parse]*)
-let esrap i j =
-  if j = 0 then sprintf "v%d" i (*Undefined var*)
-  else sprintf "v%d__%d" i j
-
-let rec rename_block b2i domtree cfg block stack =
-  let stack_backup = Array.copy stack in
-  let for_ins_in_blk_once ins =
-    let args =
-      List.map (Instr.args ins)
-        ~f:(fun v -> let i = parse v in
-                     esrap i stack.(i)) in
-    let ins1 = Option.value (Instr.set_args args ins)
-                 ~default: ins in
-    match Instr.dest ins1 with
-    | Some (d, t) ->
-       let i = parse d in
-       stack.(i) <- stack.(i) + 1;
-       let d1 = esrap i stack.(i) in
-       Option.value (Instr.set_dest (d1, t) ins1)
-         ~default: ins1
-    | None -> ins1 in
-  let for_blk_in_suc_once blk = fun suc ->
-    let open Instr in
-    let rec helper instrs = match instrs with
-      | (Phi (d, lst)) :: t ->
-         let lst_new =
-           List.map lst
-             ~f:(fun (lbl, var) ->
-               if String.equal lbl blk then
-                 let i = parse var in
-                 (lbl, esrap i stack.(i))
-               else (lbl, var)) in
-         Phi (d, lst_new) :: helper t
-      | lst -> lst in
-    helper suc in
-  let for1 =
-    let data = List.map (SM.find_exn b2i block)
-                 ~f:for_ins_in_blk_once in
-    SM.set b2i ~key:block ~data in
-  let for2 =
+let esrap i stacks =
+  match stacks.(i) with
+  | [] -> "undefined" (*Undefined var*)
+  | j :: _ -> sprintf "v%d_%d" i j
 
 
-        (* for i = 0 to Array.length stack do
-          stack.(i) <- stack_backup.(i) done *)
+let for_loop_1_once instr counts stacks =
+  let open Instr in
+  match dest instr with
+  | Some ((v, _) as d) -> 
+     let instr' = match instr with
+       | Phi _ -> instr
+       | _ ->
+          let uses =
+            List.map (args instr)
+              ~f:(fun v -> esrap (parse v) stacks) in
+          set_args uses instr |> Option.value ~default:instr in
+     let vi = parse v in
+     let i = counts.(vi) in
+     stacks.(vi) <- i :: stacks.(vi);
+     counts.(vi) <- i + 1;
+     set_dest d instr |> Option.value ~default:instr'
+  | None -> instr
+
+
+let for_loop_2_once y instr stacks =
+  let open Instr in
+  match instr with
+  | Phi (dst, lst) ->
+     let lst' = List.map lst
+                  ~f:(fun (lbl, arg) ->
+                    if String.(lbl = y)
+                    then (lbl, esrap (parse arg) stacks)
+                    else (lbl, arg)) in
+     Phi (dst, lst')
+  | _ -> instr
+
+
+let rec rename_block_help dt b2i cfg block stacks counts =
+  (*Old LHS to be popped at the end of functions*)
+  
        
+
+
+let rename_blks domtree (func: Func.t) =
+  let num_args = List.length func.args in
+  let stacks = Array.create ~len:num_args [] in
+  let counts = Array.create ~len:num_args 0 in
+  (*Because func args aliases are already defined in decoy*)
+  for i = 0 to num_args - 1 do
+    stacks.(i) <- 1 :: stacks.(i);
+    counts.(i) <- 1
+  done;
+  (*Not decoy!! Actual entry block*)
+  let entry_real = List.nth_exn func.order 1 in
+  rename_block_help domtree func.map func.graph
+    entry_real stacks counts
