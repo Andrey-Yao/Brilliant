@@ -1,7 +1,6 @@
 open! Core
-open Dominance
-open Util.Common
 open Ir
+open Util.Common
 module Dom = Dominance
 module SHT = Hashtbl.Make(String)
 
@@ -17,12 +16,12 @@ let preprocess (func: Func.t) =
   let v2num = SHT.create () in
   (*Inits v2num to map arg0,...,argk to 0,...,k*)
   List.iteri func_args
-    ~f:(fun i v -> SHT.set v2num ~key:v ~data:i);
+    ~f:(fun i v -> SHT.add_exn v2num ~key:v ~data:i);
   let map_var v =
     match SHT.find v2num v with
     | Some i -> sprintf "v%d" i
     | None -> let i = SHT.length v2num in
-              SHT.set v2num ~key:v ~data:i;
+              SHT.add_exn v2num ~key:v ~data:i;
               sprintf "v%d" i in
   let instr_folder instr =
     let args = Instr.args instr in
@@ -66,7 +65,6 @@ let parse var = String.slice var 1 0 |> int_of_string
 let vars_to_defs_and_typs (func: Func.t) num_vars =
   let arr = Array.create ~len:num_vars
               (Bril_type.BoolType, SS.empty) in
-  let open Func.G in
   let add_defs_and_typs b =
     List.iter (SM.find_exn func.map b)
       ~f:(fun instr ->
@@ -75,7 +73,7 @@ let vars_to_defs_and_typs (func: Func.t) num_vars =
         | Some (v, typ) ->
            let i = parse v in
            arr.(i) <- (typ, SS.add (snd arr.(i)) b)) in
-  List.iter func.order ~f:add_defs_and_typs;
+  func.order |> List.tl_exn |> List.iter  ~f:add_defs_and_typs;
   arr
 
 (**Adding prepending phi function. Aware of labels*)
@@ -122,7 +120,6 @@ let esrap i stacks =
   match stacks.(i) with
   | [] -> "undefined" (*Undefined var*)
   | j :: _ -> sprintf "v%d_%d" i j
-
 
 let for_loop_1_once instr counts stacks =
   let open Instr in
@@ -180,7 +177,6 @@ let rec rename_block_help dt b2i cfg stacks counts x =
       let i = dst |> fst |> parse in
       stacks.(i) <- List.tl_exn stacks.(i));
   b2i'''
-  
 
 
 let rename_blks domtree num_vars (func: Func.t) : Func.t =

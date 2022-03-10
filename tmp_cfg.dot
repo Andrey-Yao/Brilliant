@@ -9,10 +9,10 @@ label = "main"
 "_B1" [label=<<table cellspacing="0">
 <tr><td bgcolor="Green">_B1</td></tr>
 <tr><td>v0: int = const 20</td></tr>
-<tr><td>v1: int = id v0</td></tr>
-<tr><td>v2: int = id v1</td></tr>
-<tr><td>relative_primes v2</td></tr>
-<tr><td>v3: int = const 0</td></tr>
+<tr><td>a: int = id v0</td></tr>
+<tr><td>v1: int = id a</td></tr>
+<tr><td>relative_primes v1</td></tr>
+<tr><td>v2: int = const 0</td></tr>
 </table>> shape="plaintext"];
 
 }}
@@ -24,23 +24,15 @@ node[fontsize="16" shape="box" fontname="Times"]
 
 subgraph cluster_0 {
 label = "mod"
-"_decoy" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">_decoy</td></tr>
-<tr><td>v0_1: int = id a</td></tr>
-<tr><td>v1_1: int = id b</td></tr>
-</table>> shape="plaintext"];
-
 "_B1" [label=<<table cellspacing="0">
 <tr><td bgcolor="Green">_B1</td></tr>
-<tr><td>v2: int = id v0</td></tr>
-<tr><td>v3: int = id v1</td></tr>
-<tr><td>v4: int = div v2 v3</td></tr>
-<tr><td>v5: int = mul v4 v3</td></tr>
-<tr><td>v6: int = sub v2 v5</td></tr>
-<tr><td>ret v6</td></tr>
+<tr><td>v0: int = id a</td></tr>
+<tr><td>v1: int = id b</td></tr>
+<tr><td>v2: int = div v0 v1</td></tr>
+<tr><td>v3: int = mul v2 v1</td></tr>
+<tr><td>v4: int = sub v0 v3</td></tr>
+<tr><td>ret v4</td></tr>
 </table>> shape="plaintext"];
-
-"_decoy" -> "_B1" ;
 
 }}
 digraph {
@@ -51,30 +43,12 @@ node[fontsize="16" shape="box" fontname="Times"]
 
 subgraph cluster_0 {
 label = "gcd"
-"_decoy" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">_decoy</td></tr>
-<tr><td>v0_1: int = id a</td></tr>
-<tr><td>v1_1: int = id b</td></tr>
-</table>> shape="plaintext"];
-
 "_B1" [label=<<table cellspacing="0">
 <tr><td bgcolor="Green">_B1</td></tr>
-<tr><td>v2: int = id v1</td></tr>
-<tr><td>v3: int = id v0</td></tr>
-<tr><td>v4: bool = gt v2 v3</td></tr>
-<tr><td>br v4 then.0 else.0</td></tr>
-</table>> shape="plaintext"];
-
-"then.0" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">then.0</td></tr>
-<tr><td>then.0</td></tr>
-<tr><td>v18: int = id v0</td></tr>
-<tr><td>v19: int = id v18</td></tr>
-<tr><td>v20: int = id v1</td></tr>
-<tr><td>v0: int = id v20</td></tr>
-<tr><td>v21: int = id v19</td></tr>
-<tr><td>v1: int = id v21</td></tr>
-<tr><td>jmp endif.0</td></tr>
+<tr><td>v1: int = id b</td></tr>
+<tr><td>v2: int = id a</td></tr>
+<tr><td>v3: bool = gt v1 v2</td></tr>
+<tr><td>br v3 then.0 else.0</td></tr>
 </table>> shape="plaintext"];
 
 "else.0" [label=<<table cellspacing="0">
@@ -82,41 +56,27 @@ label = "gcd"
 <tr><td>else.0</td></tr>
 </table>> shape="plaintext"];
 
-"endif.0" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">endif.0</td></tr>
-<tr><td>endif.0</td></tr>
-<tr><td>v8: int = id v0</td></tr>
-<tr><td>v9: int = const 0</td></tr>
-<tr><td>v10: bool = eq v8 v9</td></tr>
-<tr><td>br v10 then.7 else.7</td></tr>
-</table>> shape="plaintext"];
-
-"then.7" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">then.7</td></tr>
-<tr><td>then.7</td></tr>
-<tr><td>v23: int = id v1</td></tr>
-<tr><td>ret v23</td></tr>
+"else.12" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">else.12</td></tr>
+<tr><td>else.12</td></tr>
 </table>> shape="plaintext"];
 
 "else.7" [label=<<table cellspacing="0">
 <tr><td bgcolor="Green">else.7</td></tr>
 <tr><td>else.7</td></tr>
-<tr><td>v5: int = id v1</td></tr>
-<tr><td>v6: int = const 0</td></tr>
-<tr><td>v7: bool = eq v5 v6</td></tr>
-<tr><td>br v7 then.12 else.12</td></tr>
+<tr><td>v13: int = id b</td></tr>
+<tr><td>v14: int = const 0</td></tr>
+<tr><td>v15: bool = eq v13 v14</td></tr>
+<tr><td>br v15 then.12 else.12</td></tr>
 </table>> shape="plaintext"];
 
-"then.12" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">then.12</td></tr>
-<tr><td>then.12</td></tr>
-<tr><td>v22: int = id v0</td></tr>
-<tr><td>ret v22</td></tr>
-</table>> shape="plaintext"];
-
-"else.12" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">else.12</td></tr>
-<tr><td>else.12</td></tr>
+"endif.0" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">endif.0</td></tr>
+<tr><td>endif.0</td></tr>
+<tr><td>v8: int = id a</td></tr>
+<tr><td>v9: int = const 0</td></tr>
+<tr><td>v10: bool = eq v8 v9</td></tr>
+<tr><td>br v10 then.7 else.7</td></tr>
 </table>> shape="plaintext"];
 
 "endif.12" [label=<<table cellspacing="0">
@@ -127,39 +87,63 @@ label = "gcd"
 "endif.7" [label=<<table cellspacing="0">
 <tr><td bgcolor="Green">endif.7</td></tr>
 <tr><td>endif.7</td></tr>
-<tr><td>v11: int = id v0</td></tr>
-<tr><td>v12: int = id v1</td></tr>
-<tr><td>v13: int = mod v11 v12</td></tr>
-<tr><td>v13: int = id v13</td></tr>
-<tr><td>v14: int = id v1</td></tr>
-<tr><td>v15: int = id v13</td></tr>
-<tr><td>v16: int = gcd v14 v15</td></tr>
-<tr><td>v16: int = id v16</td></tr>
-<tr><td>v17: int = id v16</td></tr>
-<tr><td>ret v17</td></tr>
+<tr><td>v17: int = id a</td></tr>
+<tr><td>v18: int = id b</td></tr>
+<tr><td>remainder: int = mod v17 v18</td></tr>
+<tr><td>remainder: int = id remainder</td></tr>
+<tr><td>v19: int = id b</td></tr>
+<tr><td>v20: int = id remainder</td></tr>
+<tr><td>g: int = gcd v19 v20</td></tr>
+<tr><td>g: int = id g</td></tr>
+<tr><td>v21: int = id g</td></tr>
+<tr><td>ret v21</td></tr>
 </table>> shape="plaintext"];
 
-"_decoy" -> "_B1" ;
+"then.0" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">then.0</td></tr>
+<tr><td>then.0</td></tr>
+<tr><td>v4: int = id a</td></tr>
+<tr><td>tmp: int = id v4</td></tr>
+<tr><td>v5: int = id b</td></tr>
+<tr><td>a: int = id v5</td></tr>
+<tr><td>v6: int = id tmp</td></tr>
+<tr><td>b: int = id v6</td></tr>
+<tr><td>jmp endif.0</td></tr>
+</table>> shape="plaintext"];
+
+"then.12" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">then.12</td></tr>
+<tr><td>then.12</td></tr>
+<tr><td>v16: int = id a</td></tr>
+<tr><td>ret v16</td></tr>
+</table>> shape="plaintext"];
+
+"then.7" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">then.7</td></tr>
+<tr><td>then.7</td></tr>
+<tr><td>v11: int = id b</td></tr>
+<tr><td>ret v11</td></tr>
+</table>> shape="plaintext"];
 
 "_B1" -> "else.0" [color="red"];
 
 "_B1" -> "then.0" [color="blue"];
 
-"then.0" -> "endif.0" ;
-
 "else.0" -> "endif.0" ;
 
-"endif.0" -> "else.7" [color="red"];
-
-"endif.0" -> "then.7" [color="blue"];
+"else.12" -> "endif.12" ;
 
 "else.7" -> "else.12" [color="red"];
 
 "else.7" -> "then.12" [color="blue"];
 
-"else.12" -> "endif.12" ;
+"endif.0" -> "else.7" [color="red"];
+
+"endif.0" -> "then.7" [color="blue"];
 
 "endif.12" -> "endif.7" ;
+
+"then.0" -> "endif.0" ;
 
 }}
 digraph {
@@ -170,46 +154,10 @@ node[fontsize="16" shape="box" fontname="Times"]
 
 subgraph cluster_0 {
 label = "relative_primes"
-"_decoy" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">_decoy</td></tr>
-<tr><td>v0_1: int = id a</td></tr>
-</table>> shape="plaintext"];
-
 "_B1" [label=<<table cellspacing="0">
 <tr><td bgcolor="Green">_B1</td></tr>
-<tr><td>v1: int = id v0</td></tr>
-<tr><td>v2: int = id v1</td></tr>
-</table>> shape="plaintext"];
-
-"for.cond.0" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">for.cond.0</td></tr>
-<tr><td>for.cond.0</td></tr>
-<tr><td>v12: int = id v2</td></tr>
-<tr><td>v13: int = const 1</td></tr>
-<tr><td>v14: bool = ge v12 v13</td></tr>
-<tr><td>br v14 for.body.0 for.end.0</td></tr>
-</table>> shape="plaintext"];
-
-"for.body.0" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">for.body.0</td></tr>
-<tr><td>for.body.0</td></tr>
-<tr><td>v6: int = id v0</td></tr>
-<tr><td>v7: int = id v2</td></tr>
-<tr><td>v8: int = gcd v6 v7</td></tr>
-<tr><td>v8: int = id v8</td></tr>
-<tr><td>v9: int = id v8</td></tr>
-<tr><td>v10: int = const 1</td></tr>
-<tr><td>v11: bool = eq v9 v10</td></tr>
-<tr><td>br v11 then.7 else.7</td></tr>
-</table>> shape="plaintext"];
-
-"then.7" [label=<<table cellspacing="0">
-<tr><td bgcolor="Green">then.7</td></tr>
-<tr><td>then.7</td></tr>
-<tr><td>v15: int = id v2</td></tr>
-<tr><td>print v15</td></tr>
-<tr><td>v16: int = const 0</td></tr>
-<tr><td>jmp endif.7</td></tr>
+<tr><td>v1: int = id a</td></tr>
+<tr><td>b: int = id v1</td></tr>
 </table>> shape="plaintext"];
 
 "else.7" [label=<<table cellspacing="0">
@@ -220,11 +168,33 @@ label = "relative_primes"
 "endif.7" [label=<<table cellspacing="0">
 <tr><td bgcolor="Green">endif.7</td></tr>
 <tr><td>endif.7</td></tr>
-<tr><td>v3: int = id v2</td></tr>
-<tr><td>v4: int = const 1</td></tr>
-<tr><td>v5: int = sub v3 v4</td></tr>
-<tr><td>v2: int = id v5</td></tr>
+<tr><td>v13: int = id b</td></tr>
+<tr><td>v14: int = const 1</td></tr>
+<tr><td>v15: int = sub v13 v14</td></tr>
+<tr><td>b: int = id v15</td></tr>
 <tr><td>jmp for.cond.0</td></tr>
+</table>> shape="plaintext"];
+
+"for.body.0" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.body.0</td></tr>
+<tr><td>for.body.0</td></tr>
+<tr><td>v5: int = id a</td></tr>
+<tr><td>v6: int = id b</td></tr>
+<tr><td>g: int = gcd v5 v6</td></tr>
+<tr><td>g: int = id g</td></tr>
+<tr><td>v8: int = id g</td></tr>
+<tr><td>v9: int = const 1</td></tr>
+<tr><td>v10: bool = eq v8 v9</td></tr>
+<tr><td>br v10 then.7 else.7</td></tr>
+</table>> shape="plaintext"];
+
+"for.cond.0" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.cond.0</td></tr>
+<tr><td>for.cond.0</td></tr>
+<tr><td>v2: int = id b</td></tr>
+<tr><td>v3: int = const 1</td></tr>
+<tr><td>v4: bool = ge v2 v3</td></tr>
+<tr><td>br v4 for.body.0 for.end.0</td></tr>
 </table>> shape="plaintext"];
 
 "for.end.0" [label=<<table cellspacing="0">
@@ -232,22 +202,29 @@ label = "relative_primes"
 <tr><td>for.end.0</td></tr>
 </table>> shape="plaintext"];
 
-"_decoy" -> "_B1" ;
+"then.7" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">then.7</td></tr>
+<tr><td>then.7</td></tr>
+<tr><td>v11: int = id b</td></tr>
+<tr><td>print v11</td></tr>
+<tr><td>v12: int = const 0</td></tr>
+<tr><td>jmp endif.7</td></tr>
+</table>> shape="plaintext"];
 
 "_B1" -> "for.cond.0" ;
 
-"for.cond.0" -> "for.body.0" [color="blue"];
+"else.7" -> "endif.7" ;
 
-"for.cond.0" -> "for.end.0" [color="red"];
+"endif.7" -> "for.cond.0" ;
 
 "for.body.0" -> "else.7" [color="red"];
 
 "for.body.0" -> "then.7" [color="blue"];
 
+"for.cond.0" -> "for.body.0" [color="blue"];
+
+"for.cond.0" -> "for.end.0" [color="red"];
+
 "then.7" -> "endif.7" ;
-
-"else.7" -> "endif.7" ;
-
-"endif.7" -> "for.cond.0" ;
 
 }}

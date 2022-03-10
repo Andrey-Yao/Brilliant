@@ -1,6 +1,6 @@
 benchmark,run,result
-mat-mul,baseline,timeout
-mat-mul,myopt,timeout
+mat-mul,baseline,1990407
+mat-mul,myopt,1990407
 sum-divisors,baseline,159
 sum-divisors,myopt,159
 euclid,baseline,563

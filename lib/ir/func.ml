@@ -31,7 +31,7 @@ type t = {
  [info1] is [info] with fields updated to include the next block in
  [instrs], and [instrs1] are the remaining instructions. Requires
  [instrs] to be nonempty. *)
-let next_block (instrs : Instr.t list) (info : t) (i : int ref) :
+let next_block (instrs : Instr.t list) (func : t) (i : int ref) :
     Instr.t list * t =
   let open Instr in
   let name =
@@ -49,20 +49,22 @@ let next_block (instrs : Instr.t list) (info : t) (i : int ref) :
     match rest with
     | [] -> (curr, rest, g)
     (*Next three cases are terminators*)
-    | (Jmp dst as h) :: t -> (h :: curr, t, add_edge ~src ~edg:Jump ~dst g)
+    | (Jmp dst as h) :: t ->
+       (h :: curr, t, add_edge ~src ~edg:Jump ~dst g)
     | (Br (_, l1, l2) as h) :: t ->
         let g1 = add_edge ~src ~edg:True ~dst:l1 g in
         let g2 = add_edge ~src ~edg:False ~dst:l2 g1 in
         (h :: curr, t, g2)
-    | (Ret _ as h) :: t -> (h :: curr, t, g)
+    | (Ret _ as h) :: t -> (h :: curr, t, add_vert g name)
     | h :: ((Label blk :: _) as rst) ->
         (h :: curr, rst, add_edge ~src ~edg:Next ~dst:blk g)
     | h :: t -> step (h :: curr) t g
   in
-  let curr, rest, g = step [] instrs info.graph in
+  let graph = G.add_vert func.graph name in
+  let curr, rest, graph' = step [] instrs graph in
   let lst = List.rev curr in
-  let map1 = String.Map.add_exn ~key:name ~data:lst info.map in
-  (rest, { info with order = name :: info.order; map = map1; graph = g })
+  let map = String.Map.add_exn ~key:name ~data:lst func.map in
+  (rest, { func with order = name :: func.order; map; graph = graph' })
 
 (** Updates [info] recursively *)
 let rec process_instrs instrs info i =
@@ -168,8 +170,8 @@ let to_dot ~verbose ~oc f =
              | _ -> "" end |> sprintf "\"%s\" -> \"%s\" %s;\n" s d)
   in
   if verbose
-  then G.to_dot f.graph ~oc ~nodes:f.order ~label:f.name ~ef
-  else G.to_dot f.graph ~oc ~nodes:f.order ~label:f.name ~nf ~ef
+  then G.to_dot f.graph ~oc ~label:f.name ~ef
+  else G.to_dot f.graph ~oc ~label:f.name ~nf ~ef
 
 
 let map_blocks ~f func =

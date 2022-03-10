@@ -29,71 +29,46 @@ end
 module MakeUnlabelled(VI: VIngredient) = struct
 
   include MakeCommon(VI)
-
-  type t = {
-      succs_map: VS.t VM.t;
-      preds_map: VS.t VM.t
-    }
-     
-  let empty = {
-      succs_map = VM.empty;
-      preds_map = VM.empty }
   
-  let find m v =
-    match VM.find m v with
-    | None -> VS.empty
-    | Some s -> s
+  (*preds, succs*)
+  type t = (VS.t * VS.t) VM.t
+     
+  let empty = VM.empty
+  
+  let find g v =
+    match VM.find g v with
+    | None -> VS.empty, VS.empty
+    | Some p -> p
 
   let full nodes : t =
-    let data = VS.of_list nodes in
+    let all = VS.of_list nodes in
     List.fold nodes
       ~init: empty
-      ~f:(fun acc key ->
-        let succs_map = VM.set acc.succs_map ~key ~data in
-        let preds_map = VM.set acc.preds_map ~key ~data in
-        { succs_map; preds_map })
+      ~f:(fun g key ->
+        VM.set g ~key ~data:(all, all))
   
-  let preds g v : VS.t = find g.preds_map v
+  let preds g v : VS.t = find g v |> fst
   
-  let succs g v : VS.t = find g.succs_map v
+  let succs g v : VS.t = find g v |> snd
 
+  let add_vert g v =
+    match VM.add g ~key:v ~data:(VS.empty, VS.empty) with
+    | VM.(`Ok g') -> g'
+    | VM.(`Duplicate) -> g
+    
   let add_edge g ~src ~dst =
-    let old_succs = succs g src in
-    let old_preds = preds g dst in
-    let ms = VM.set ~key:src ~data:(VS.add old_succs dst) g.succs_map in
-    let mp = VM.set ~key:dst ~data:(VS.add old_preds src) g.preds_map in
-    { succs_map = ms; preds_map = mp }
+    let preds_src, succs_src = find g src in
+    let succs_src' = VS.add succs_src dst in
+    let g = VM.set g ~key:src ~data:(preds_src, succs_src') in
+    let preds_dst, succs_dst = find g dst in
+    let preds_dst' = VS.add preds_dst src in
+    VM.set g ~key:dst ~data:(preds_dst', succs_dst)
 
-  (*
-  let del_edge g ~src ~dst =
-    let old_succs = succs_e g src in
-    let old_preds = preds_e g dst in
-    let ms = VM.set ~key:src ~data:(ES.remove old_succs (edg, dst)) g.succs_map in
-    let mp = VM.set ~key:dst ~data:(ES.remove old_preds (edg, src)) g.preds_map in
-    { succs_map = ms; preds_map = mp } *)
+  let del_vert g v = VM.remove g v
 
-  (**Removes [n] and its associated edges from [g]*)
-  let del_vert g v =
-    let preds_map_1 =
-      VS.fold
-        ~init:g.preds_map
-        ~f:(fun map s ->
-          let old_preds = find map s in
-          VM.set map ~key:s ~data:(VS.remove old_preds v))
-        (succs g v)
-    in
-    let succs_map_1 =
-      VS.fold
-        ~init:g.succs_map
-        ~f:(fun map p ->
-          let old_succs = find map p in
-          VM.set map ~key:p ~data:(VS.remove old_succs v))
-        (preds g v)
-    in
-    { succs_map = VM.remove succs_map_1 v; preds_map = VM.remove preds_map_1 v; }
+  let vert_lst g = VM.keys g
 
-
-  let to_dot ~(oc:Out_channel.t) ~nodes ~label
+  let to_dot ~(oc:Out_channel.t) ~label
         ?(nf = default_np) ?(ef=default_ep) g =
     let open Out_channel in
     let print s = output_string oc (s^"\n") in
@@ -101,13 +76,13 @@ module MakeUnlabelled(VI: VIngredient) = struct
     print format;
     print "subgraph cluster_0 {";
     print (sprintf "label = \"%s\"" label);
+    let nodes = vert_lst g in
     List.iter nodes ~f:(fun v -> v |> nf |> print);
     List.iter nodes ~f:(
         fun u -> succs g u
                  |> VS.iter ~f:(fun v -> ef u v |> print));
     print "}}"
 end
-
 
 
 
@@ -126,20 +101,17 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
   type e = EI.t
   type edge = e * v
 
-  type t = {
-      succs_map: ES.t VM.t;
-      preds_map: ES.t VM.t
-    }
+  type t = (ES.t * ES.t) VM.t
      
-  let empty = { succs_map = VM.empty; preds_map = VM.empty }
+  let empty = VM.empty
   
-  let find m v =
-    match VM.find m v with
-    | None -> ES.empty
-    | Some s -> s
+  let find g v = match VM.find g v with
+    | None -> ES.empty, ES.empty
+    | Some p -> p 
 
-  let preds_e g v = find g.preds_map v
-  let succs_e g v = find g.succs_map v
+  let preds_e g v = v |> VM.find_exn g |> fst
+  
+  let succs_e g v = v |> VM.find_exn g |> snd
 
   let preds g v : VS.t =
     v |> preds_e g |> Set.to_array |> Array.unzip
@@ -150,11 +122,12 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
     |> snd |> VS.of_sorted_array_unchecked
 
   let add_edge g ~src ~edg ~dst =
-    let old_succs = succs_e g src in
-    let old_preds = preds_e g dst in
-    let ms = VM.set ~key:src ~data:(ES.add old_succs (edg, dst)) g.succs_map in
-    let mp = VM.set ~key:dst ~data:(ES.add old_preds (edg, src)) g.preds_map in
-    { succs_map = ms; preds_map = mp }
+    let preds_src, succs_src = find g src in
+    let succs_src' = ES.add succs_src (edg, dst) in
+    let g = VM.set g ~key:src ~data:(preds_src, succs_src') in
+    let preds_dst, succs_dst = find g dst in
+    let preds_dst' = ES.add preds_dst (edg, src) in
+    VM.set g ~key:dst ~data:(preds_dst', succs_dst)
 
   (*
   let del_edge g ~src ~dst =
@@ -163,30 +136,17 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
     let ms = VM.set ~key:src ~data:(ES.remove old_succs (edg, dst)) g.succs_map in
     let mp = VM.set ~key:dst ~data:(ES.remove old_preds (edg, src)) g.preds_map in
     { succs_map = ms; preds_map = mp } *)
+  
+  let add_vert g v =
+    match VM.add g ~key:v ~data:(ES.empty, ES.empty) with
+    | VM.(`Ok g') -> g'
+    | VM.(`Duplicate) -> g
+  
+  let del_vert g v = VM.remove g v
 
-  (**Removes [n] and its associated edges from [g]*)
-  let del_vert g v =
-    let filter es = ES.filter ~f:(fun e -> e |> snd |> VI.equal v |> not) es in
-    let preds_map_1 =
-      VS.fold
-        ~init:g.preds_map
-        ~f:(fun map s ->
-          let data = s |> find map |> filter in
-          VM.set ~key:s ~data map)
-        (succs g v)
-    in
-    let succs_map_1 =
-      VS.fold
-        ~init:g.succs_map
-        ~f:(fun map p ->
-          let data = p |> find map |> filter in
-          VM.set ~key:p ~data map)
-        (preds g v)
-    in
-    { succs_map = VM.remove succs_map_1 v; preds_map = VM.remove preds_map_1 v; }
+  let vert_lst g = VM.keys g
 
-
-  let to_dot ~(oc:Out_channel.t) ~nodes ~label
+  let to_dot ~(oc:Out_channel.t) ~label
         ?(nf = default_np) ?(ef=default_elp) g =
     let open Out_channel in
     let print s = output_string oc (s^"\n") in
@@ -194,6 +154,7 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
     print format;
     print "subgraph cluster_0 {";
     print (sprintf "label = \"%s\"" label);
+    let nodes = vert_lst g in
     List.iter nodes ~f:(fun v -> v |> nf |> print);
     List.iter nodes ~f:(
         fun u -> succs_e g u

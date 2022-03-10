@@ -7,7 +7,6 @@ module G =
         type t = string [@@deriving compare, equal, sexp]
         let to_string s = s
       end)
-
 module CFG = Ir.Func.G
 
 type t = G.t
@@ -36,12 +35,12 @@ let reverse_post_order ~order ~cfg
 (**Performs a single update in the dominator set for the 
    block [b] from [doms]. Returns [None] if no change happened.
    What are you doing, step dom?*)
-let step_dom (doms: t) (func: CFG.t) (b:string): t option =
+let step_dom (doms: t) (cfg: CFG.t) (b:string): t option =
   let open G in
   let doms_b_old = succs doms b in
   let ss =
     CFG.VS.fold
-      (CFG.preds func b)
+      (CFG.preds cfg b)
       ~init: VS.empty
       ~f:(fun acc p -> acc |> VS.inter (succs doms p))
   in
@@ -52,14 +51,14 @@ let step_dom (doms: t) (func: CFG.t) (b:string): t option =
          ~f:(fun acc d -> add_edge acc ~src:b ~dst:d)
        |> Option.return
 
-
 (**Finds the dominators of each block given reverse postorder
    [rpo] and graph [g]. Omits unreachable blocks*)
-let dominators (g: Ir.Func.t): t =
+let dominators (f: Ir.Func.t): t =
   let open G in
-  let rpo = reverse_post_order ~order:g.order ~cfg:g.graph in
+  let rpo = reverse_post_order ~order:f.order ~cfg:f.graph in
+  assert(VS.equal (VS.of_list rpo) (full rpo |> vert_lst |> VS.of_list));
   let folder (doms, same) b =
-    match step_dom doms g.graph b with
+    match step_dom doms f.graph b with
     | None -> (doms, same)
     | Some m -> (m, false)
   in
@@ -112,5 +111,5 @@ let dominance_frontier (doms: t) (func: Ir.Func.t) =
         ~f:(fun g2 dst -> G.add_edge g2 ~src ~dst))
 
 
-let to_dot oc doms (func: Ir.Func.t) =
-  G.to_dot ~oc ~nodes:func.order ~label:func.name doms
+let to_dot ~oc ~label doms =
+  G.to_dot ~oc ~label doms

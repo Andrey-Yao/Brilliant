@@ -10,8 +10,4 @@ val dominance_tree: string -> t -> t
 (**Dominance frontier*)
 val dominance_frontier: t -> Ir.Func.t -> t
 
-
-(*
-val to_dot: oc:Stdio.Out_channel.t -> nodes:(string list) ->
-             t -> unit
-                  *)
+val to_dot: oc:Stdio.Out_channel.t -> label:string -> t -> unit

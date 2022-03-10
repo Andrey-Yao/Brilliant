@@ -1,3 +1,4 @@
+(*
 open! Core
 open Ir
 
@@ -17,3 +18,4 @@ type data = {
   var_to_num : int String.Map.t; (*cloud*)
   num_to_can : canon Int.Map.t; (*Canon*)
 }
+*)

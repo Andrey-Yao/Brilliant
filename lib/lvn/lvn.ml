@@ -1,3 +1,4 @@
+(*
 open! Core
 open Ir
 
@@ -61,3 +62,4 @@ let local_value_number args block =
     }
   in
   ()
+*)

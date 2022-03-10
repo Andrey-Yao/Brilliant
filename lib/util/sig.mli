@@ -22,7 +22,15 @@ module type Common = sig
 
   (**[empty] makes an empty graph*)
   val empty: t
+  
+  (**Adds [n] with no edges to [g]*)
+  val add_vert: t -> v -> t
+  
+  (**Removes [n] and its associated edges from [g]*)
   val del_vert: t -> v -> t
+
+  val vert_lst: t -> v list
+  
   val succs: t -> v -> VS.t
   val preds: t -> v -> VS.t
 
@@ -37,12 +45,12 @@ module type Unlabelled = sig
 
   (**adds edge [e]. Creates [src] and [dst] nodes if missing*)
   val add_edge: t -> src:v -> dst:v -> t
+
+  val vert_lst: t -> v list
   
   (**Generic function for outputting graph to graphviz form.*)
-  val to_dot : oc:Out_channel.t ->  nodes:(v list) ->
-               label:string -> ?nf:(v -> string)
-               -> ?ef:(v -> v -> string)
-               -> t -> unit
+  val to_dot : oc:Out_channel.t -> label:string -> ?nf:(v -> string)
+               -> ?ef:(v -> v -> string) -> t -> unit
 end
 
 
@@ -59,8 +67,6 @@ module type Labelled = sig
   val preds_e: t -> v -> ES.t
 
   (**Generic function for outputting graph to graphviz form.*)
-  val to_dot : oc:Out_channel.t ->  nodes:(v list) ->
-               label:string -> ?nf:(v -> string)
-               -> ?ef:(v -> e -> v -> string)
-               -> t -> unit
+  val to_dot : oc:Out_channel.t -> label:string -> ?nf:(v -> string)
+               -> ?ef:(v -> e -> v -> string) -> t -> unit
 end
