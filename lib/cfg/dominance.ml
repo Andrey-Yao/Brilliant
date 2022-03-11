@@ -38,7 +38,9 @@ let reverse_post_order ~order ~cfg
    What are you doing, step dom?*)
 let step_dom (doms: G.VS.t SHT.t) (cfg: CFG.t) (b:string): bool =
   let open G in
-  let find = SHT.find_exn in
+  let find d v =
+    match SHT.find d v with
+      Some res -> res | None -> G.VS.empty in
   let doms_b_old = find doms b in
   let ss =
     let preds_b = CFG.preds cfg b in
@@ -46,7 +48,7 @@ let step_dom (doms: G.VS.t SHT.t) (cfg: CFG.t) (b:string): bool =
     | None -> VS.empty
     | Some pred ->
        CFG.VS.fold
-       (CFG.preds cfg b)
+         (CFG.preds cfg b)
          ~init:(find doms pred)
          ~f:(fun acc p -> acc |> VS.inter (find doms p))
   in
@@ -65,8 +67,9 @@ let dominators (f: Ir.Func.t): t =
   let changed = ref true in
   (*Repeats till convergence*)
   while !changed do
-    changed := List.fold rpo ~init:false
-      ~f:(fun acc b -> acc || (step_dom doms f.graph b))
+    changed :=
+      List.fold rpo ~init:false
+        ~f:(fun acc b -> acc || (step_dom doms f.graph b))
   done;
   let folder b domz d = add_edge domz ~src:b ~dst:d in
   List.fold rpo
@@ -84,13 +87,14 @@ let idom doms u v =
   VS.length inter = 2 && VS.equal inter (VS.add (VS.singleton u) v)
 
 (**This gives a tree*)
-let dominance_tree root (doms: t) =
+let submissive_tree (doms: t) =
   let folder u g v =
-    if idom doms u v then G.add_edge g ~src:u ~dst:v else g in
+    if idom doms u v then G.add_edge g ~src:u ~dst:v else
+      G.add_vert g u in
   List.fold (G.vert_lst doms)
-    ~init:(G.add_vert G.empty root)
+    ~init:G.empty
     ~f:(fun g u ->
-      G.VS.fold (G.preds doms u) ~init:g
+      G.VS.fold (G.succs doms u) ~init:g
         ~f:(folder u))
 
 let dominance_frontier_single ~(df: t) ~(doms: t) ~(cfg: CFG.t) a =

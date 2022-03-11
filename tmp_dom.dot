@@ -5,88 +5,83 @@ penwidth=1
 node[fontsize="16" shape="box" fontname="Times"]
 
 subgraph cluster_0 {
-label = "pack"
-"_B1" [label="_B1"]
-
-}}
-digraph {
-fontname="Times"
-fontsize="20"
-penwidth=1
-node[fontsize="16" shape="box" fontname="Times"]
-
-subgraph cluster_0 {
-label = "print_array"
-"_B1" [label="_B1"]
-
-"body" [label="body"]
-
-"done" [label="done"]
-
-"loop" [label="loop"]
-
-"loop_end" [label="loop_end"]
-
-"_B1" -> "loop"
-
-"body" -> "loop_end"
-
-"loop" -> "body"
-
-"loop" -> "done"
-
-}}
-digraph {
-fontname="Times"
-fontsize="20"
-penwidth=1
-node[fontsize="16" shape="box" fontname="Times"]
-
-subgraph cluster_0 {
-label = "binary_search"
-"_B1" [label="_B1"]
-
-"body" [label="body"]
-
-"call_gt" [label="call_gt"]
-
-"call_lt" [label="call_lt"]
-
-"check_equal" [label="check_equal"]
-
-"check_gt" [label="check_gt"]
-
-"check_valid" [label="check_valid"]
-
-"end" [label="end"]
-
-"found" [label="found"]
-
-"_B1" -> "check_valid"
-
-"body" -> "check_equal"
-
-"check_equal" -> "check_gt"
-
-"check_equal" -> "found"
-
-"check_gt" -> "call_gt"
-
-"check_gt" -> "call_lt"
-
-"check_valid" -> "body"
-
-"check_valid" -> "end"
-
-}}
-digraph {
-fontname="Times"
-fontsize="20"
-penwidth=1
-node[fontsize="16" shape="box" fontname="Times"]
-
-subgraph cluster_0 {
 label = "main"
 "_B1" [label="_B1"]
+
+"cmp.val" [label="cmp.val"]
+
+"else.1" [label="else.1"]
+
+"else.2" [label="else.2"]
+
+"if.1" [label="if.1"]
+
+"if.2" [label="if.2"]
+
+"loop.bound" [label="loop.bound"]
+
+"program.end" [label="program.end"]
+
+"update.val" [label="update.val"]
+
+"_B1" -> "_B1"
+
+"cmp.val" -> "_B1"
+
+"cmp.val" -> "cmp.val"
+
+"else.1" -> "_B1"
+
+"else.1" -> "cmp.val"
+
+"else.1" -> "else.1"
+
+"else.2" -> "_B1"
+
+"else.2" -> "cmp.val"
+
+"else.2" -> "else.2"
+
+"else.2" -> "loop.bound"
+
+"else.2" -> "update.val"
+
+"if.1" -> "_B1"
+
+"if.1" -> "cmp.val"
+
+"if.1" -> "if.1"
+
+"if.2" -> "_B1"
+
+"if.2" -> "cmp.val"
+
+"if.2" -> "if.2"
+
+"if.2" -> "loop.bound"
+
+"if.2" -> "update.val"
+
+"loop.bound" -> "_B1"
+
+"loop.bound" -> "cmp.val"
+
+"loop.bound" -> "loop.bound"
+
+"program.end" -> "_B1"
+
+"program.end" -> "cmp.val"
+
+"program.end" -> "loop.bound"
+
+"program.end" -> "program.end"
+
+"update.val" -> "_B1"
+
+"update.val" -> "cmp.val"
+
+"update.val" -> "loop.bound"
+
+"update.val" -> "update.val"
 
 }}

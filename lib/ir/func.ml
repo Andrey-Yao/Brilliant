@@ -125,7 +125,7 @@ let of_json (json: Yojson.Basic.t) =
     }
   in
   process_instrs instructions init_info (ref 0)
-  |> (fun inf -> { inf with order = List.rev inf.order }) |> clean
+  |> (fun inf -> { inf with order = List.rev inf.order })|> clean
 
 
 let to_json (g: t) : Yojson.Basic.t =

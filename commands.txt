@@ -1,3 +1,0 @@
-bril2json < ../bril/benchmarks/mat-mul.bril | dune exec -- bin/main.exe
-
-gvpack -u tmp.dot | dot -Tpng -O

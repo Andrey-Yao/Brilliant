@@ -24,8 +24,8 @@ module PosetProperties = struct
      => [s] = [b]*)
   let antisymmetric_single (doms: t) b =
     let predicate s =
-      not(String.equal b s) && G.VS.mem (G.succs doms s) b in
-    b |> G.succs doms |> G.VS.exists ~f:predicate |> not
+      (String.equal b s) || not (G.VS.mem (G.succs doms s) b) in
+    b |> G.succs doms |> G.VS.exists ~f:predicate
 
   let make_test_single (doms: t) b = [
       sprintf "Reflexive [%s]" b >:: (fun _ ->
@@ -61,31 +61,31 @@ module DomTreeProperties = struct
     List.for_all verts
       ~f:(fun v -> G.VS.length (G.preds domtree v) <= 1)
 
-  let idempotent domtree root =
-    let domtree' = Dom.dominance_tree root domtree in
+  let idempotent domtree =
+    let domtree' = Dom.submissive_tree domtree in
     let verts = G.vert_lst domtree in
     List.for_all verts
       ~f:(fun v ->
         (G.VS.equal (G.succs domtree v) (G.succs domtree' v))
         && (G.VS.equal (G.preds domtree v) (G.preds domtree' v)))
 
-  let test_all domtree doms root name =
+  let test_all domtree doms name =
     "Domtree " >:::
     [
       sprintf "Same vertices [%s]" name >:: (fun _ ->
         assert_bool "ver" (same_vertices domtree doms));
       sprintf "check_degree [%s]" name >:: (fun _ ->
         assert_bool "deg" (check_degree domtree));
-      sprintf "idempotent [%s]" name >:: (fun _ ->
-        assert_bool "idm" (idempotent domtree root));
+      sprintf "idempotent [%s]" name >:: (fun _ -> 
+        assert_bool "idm" (idempotent domtree));
     ]
 end
 
 let test_all (func: Ir.Func.t) =
   let root = List.hd_exn func.order in
   let doms = Dom.dominators func in
-  let domtree = Dom.dominance_tree root doms in
+  let domtree = Dom.submissive_tree doms in
   [
-    (* PosetProperties.test_all doms func.order func.name; *)
-    DomTreeProperties.test_all domtree doms root func.name
+    PosetProperties.test_all doms func.order func.name;
+    DomTreeProperties.test_all domtree doms func.name
   ]

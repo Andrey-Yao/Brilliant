@@ -4,7 +4,8 @@ open Ir
 
 
 let _ =
-  Sys.chdir "test/benchmarks";
+  Sys.getcwd () |> print_endline;
+  Sys.chdir "benchmarks";
   let json_files = 
     Sys.readdir "."
     |> Array.to_list

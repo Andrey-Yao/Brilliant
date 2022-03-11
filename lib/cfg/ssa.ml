@@ -193,11 +193,10 @@ let rename_blks domtree num_vars (func: Func.t) : Func.t =
 
 let to_ssa (func: Func.t) =
   let func', num_vars = preprocess func in
-  let entry = List.hd_exn func'.order in
   let var2typndefs = vars_to_defs_and_typs func' num_vars in
   let dominators = Dom.dominators func' in
   let domfront = Dom.dominance_frontier dominators func'.graph in
-  let domtree = Dominance.dominance_tree entry dominators in
+  let domtree = Dom.submissive_tree dominators in
   let func'' = insert_phis func' domfront var2typndefs in
   rename_blks domtree num_vars func''
   

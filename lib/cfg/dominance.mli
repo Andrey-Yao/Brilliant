@@ -5,7 +5,7 @@ type t = G.t
 
 val dominators: Ir.Func.t -> t
 
-val dominance_tree: string -> t -> t
+val submissive_tree: t -> t
 
 (**Dominance frontier*)
 val dominance_frontier: t -> Ir.Func.G.t -> t
