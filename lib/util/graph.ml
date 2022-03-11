@@ -34,6 +34,9 @@ module MakeUnlabelled(VI: VIngredient) = struct
   type t = (VS.t * VS.t) VM.t
      
   let empty = VM.empty
+
+  let rev g =
+    VM.map g ~f:(fun (a, b) -> (b, a))
   
   let find g v =
     match VM.find g v with
@@ -66,6 +69,14 @@ module MakeUnlabelled(VI: VIngredient) = struct
 
   let del_vert g v = VM.remove g v
 
+  let del_edge g ~src ~dst =
+    let preds_src, succs_src = find g src in
+    let succs_src' = VS.remove succs_src dst in
+    let g = VM.set g ~key:src ~data:(preds_src, succs_src') in
+    let preds_dst, succs_dst = find g dst in
+    let preds_dst' = VS.remove preds_dst src in
+    VM.set g ~key:dst ~data:(preds_dst', succs_dst)
+
   let vert_lst g = VM.keys g
 
   let bfs g root =
@@ -85,7 +96,7 @@ module MakeUnlabelled(VI: VIngredient) = struct
           else ())
     done;
     Stack.fold edges
-      ~init:empty
+      ~init:(add_vert empty root)
       ~f:(fun acc (u, v) -> add_edge acc ~src:u ~dst:v)
 
   let to_dot ~(oc:Out_channel.t) ~label

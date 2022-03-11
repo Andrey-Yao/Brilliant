@@ -2,8 +2,6 @@ open! Core
 open Ir
 open Util.Common
 module Dom = Dominance
-module SHT = Hashtbl.Make(String)
-
 
 (**Returns [func', n] where [func'] is [func] with all
    occurence of variables (including in the arguments)

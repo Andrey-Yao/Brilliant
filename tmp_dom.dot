@@ -5,35 +5,88 @@ penwidth=1
 node[fontsize="16" shape="box" fontname="Times"]
 
 subgraph cluster_0 {
-label = "main"
+label = "pack"
 "_B1" [label="_B1"]
 
-"for.body" [label="for.body"]
+}}
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
 
-"for.cond.1" [label="for.cond.1"]
+subgraph cluster_0 {
+label = "print_array"
+"_B1" [label="_B1"]
 
-"for.end" [label="for.end"]
+"body" [label="body"]
 
-"for.incre" [label="for.incre"]
+"done" [label="done"]
 
-"if.body" [label="if.body"]
+"loop" [label="loop"]
 
-"if.failure.end" [label="if.failure.end"]
+"loop_end" [label="loop_end"]
 
-"if.success" [label="if.success"]
+"_B1" -> "loop"
 
-"_B1" -> "for.body"
+"body" -> "loop_end"
 
-"_B1" -> "for.cond.1"
+"loop" -> "body"
 
-"_B1" -> "for.end"
+"loop" -> "done"
 
-"_B1" -> "for.incre"
+}}
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
 
-"_B1" -> "if.body"
+subgraph cluster_0 {
+label = "binary_search"
+"_B1" [label="_B1"]
 
-"_B1" -> "if.failure.end"
+"body" [label="body"]
 
-"_B1" -> "if.success"
+"call_gt" [label="call_gt"]
+
+"call_lt" [label="call_lt"]
+
+"check_equal" [label="check_equal"]
+
+"check_gt" [label="check_gt"]
+
+"check_valid" [label="check_valid"]
+
+"end" [label="end"]
+
+"found" [label="found"]
+
+"_B1" -> "check_valid"
+
+"body" -> "check_equal"
+
+"check_equal" -> "check_gt"
+
+"check_equal" -> "found"
+
+"check_gt" -> "call_gt"
+
+"check_gt" -> "call_lt"
+
+"check_valid" -> "body"
+
+"check_valid" -> "end"
+
+}}
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
+
+subgraph cluster_0 {
+label = "main"
+"_B1" [label="_B1"]
 
 }}

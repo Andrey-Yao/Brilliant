@@ -8,5 +8,7 @@ let to_list_nonnull =
   let open Yojson.Basic.Util in
   function `Null -> [] | json -> to_list json
 
-module SM = Core.String.Map
-module SS = Core.String.Set
+module SM = String.Map
+module SS = String.Set
+module SHT = Hashtbl.Make(String)
+module SHS = String.Hash_set

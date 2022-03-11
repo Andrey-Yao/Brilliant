@@ -41,10 +41,14 @@ module type Unlabelled = sig
   
   include Common
 
+  val rev: t -> t
+
   val full: v list -> t
 
   (**adds edge [e]. Creates [src] and [dst] nodes if missing*)
   val add_edge: t -> src:v -> dst:v -> t
+
+  val del_edge: t -> src:v -> dst:v -> t
 
   val vert_lst: t -> v list
 

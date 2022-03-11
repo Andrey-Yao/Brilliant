@@ -19,80 +19,98 @@ let reverse_post_order ~order ~cfg
     while prepending elements to stack, while keeping track of
     which nodes have been visited via [set]*)
   let stack = Stack.create () in
-  let rec build set node: SS.t =
-    if SS.mem set node then set
-    else (let tmp = CFG.VS.fold
-            ~init:(SS.add set node)
-            ~f:(fun se v -> build se v)
-            (CFG.succs cfg node) in
-          Stack.push stack node; tmp) in
+  let set = String.Hash_set.create () in
+  let rec traverse node: unit =
+    if Hash_set.mem set node then ()
+    else
+      (Hash_set.add set node;
+        CFG.VS.iter (CFG.succs cfg node)
+            ~f:(fun v -> traverse v);
+          Stack.push stack node) in
   match order with
   | [] -> []
   | entry :: _ ->
-     let _: SS.t = build SS.empty entry in
+     traverse entry;
      Stack.to_list stack
 
 (**Performs a single update in the dominator set for the 
-   block [b] from [doms]. Returns [None] if no change happened.
+   block [b] in [doms]. Returns [true] if change happened.
    What are you doing, step dom?*)
-let step_dom all (doms:t) (cfg: CFG.t) (b:string): t option =
+let step_dom (doms: G.VS.t SHT.t) (cfg: CFG.t) (b:string): bool =
   let open G in
-  let doms_b_old = succs doms b in
+  let find = SHT.find_exn in
+  let doms_b_old = find doms b in
   let ss =
-    CFG.VS.fold
-      (CFG.preds cfg b)
-      ~init:all
-      ~f:(fun acc p -> acc |> VS.inter (succs doms p))
+    let preds_b = CFG.preds cfg b in
+    match CFG.VS.choose preds_b with
+    | None -> VS.empty
+    | Some pred ->
+       CFG.VS.fold
+       (CFG.preds cfg b)
+         ~init:(find doms pred)
+         ~f:(fun acc p -> acc |> VS.inter (find doms p))
   in
   let doms_b_new = VS.add ss b in
-  if VS.equal doms_b_old doms_b_new then None
-  else VS.fold doms_b_new
-         ~init:(G.del_vert doms b)
-         ~f:(fun acc d -> add_edge acc ~src:b ~dst:d)
-       |> Option.return
+  if VS.equal doms_b_old doms_b_new then false
+  else (SHT.set doms ~key:b ~data:doms_b_new; true)
 
-(**Finds the dominators of each block given reverse postorder
-   [rpo] and graph [g]. Omits unreachable blocks*)
+(**[dominators f] gives a graph [g] such that the successors of 
+   [v] in [g] are exactly the nodes that dominate [g].*)
 let dominators (f: Ir.Func.t): t =
   let open G in
   let rpo = reverse_post_order ~order:f.order ~cfg:f.graph in
-  let all = VS.of_list rpo in
-  let folder (doms, same) b =
-    match step_dom all doms f.graph b with
-    | None -> (doms, same)
-    | Some m -> (m, false)
-  in
+  let full = VS.of_list rpo in
+  let doms = SHT.create () in
+  List.iter rpo ~f:(fun b -> SHT.set doms ~key:b ~data: full);
+  let changed = ref true in
   (*Repeats till convergence*)
-  let rec converge (doms, same) =
-    if (same) then doms
-    else converge (List.fold ~f:folder ~init:(doms, true) rpo)
-  in
-  converge (full rpo, false)
+  while !changed do
+    changed := List.fold rpo ~init:false
+      ~f:(fun acc b -> acc || (step_dom doms f.graph b))
+  done;
+  let folder b domz d = add_edge domz ~src:b ~dst:d in
+  List.fold rpo
+    ~init:empty
+    ~f:(fun domz b ->
+      VS.fold (SHT.find_exn doms b) ~init:domz ~f:(folder b))
+
+(*TODO VERY INEFFICIENT RN*)
+(**[idom doms u v] is when [u] immediately dominates [v]*)
+let idom doms u v =
+  let open G in
+  let subs_u = preds doms u in
+  let doms_v = succs doms v in
+  let inter = VS.inter subs_u doms_v in
+  VS.length inter = 2 && VS.equal inter (VS.add (VS.singleton u) v)
 
 (**This gives a tree*)
 let dominance_tree root (doms: t) =
-  G.bfs doms root
+  let folder u g v =
+    if idom doms u v then G.add_edge g ~src:u ~dst:v else g in
+  List.fold (G.vert_lst doms)
+    ~init:(G.add_vert G.empty root)
+    ~f:(fun g u ->
+      G.VS.fold (G.preds doms u) ~init:g
+        ~f:(folder u))
 
 let dominance_frontier_single ~(df: t) ~(doms: t) ~(cfg: CFG.t) a =
   (*Nodes one edge away from the submissive set*)
-  let doms_a = G.succs doms a in
+  let subs_a = G.preds doms a in
   let frontierish =
-    G.VS.fold doms_a
+    G.VS.fold subs_a
       ~init: CFG.VS.empty
       ~f:(fun acc b ->
-        CFG.VS.remove (CFG.succs cfg b) b |> CFG.VS.union acc)
+        b |> CFG.succs cfg |> CFG.VS.union acc)
     |> CFG.VS.to_list |> G.VS.of_list in
-  G.VS.fold (G.VS.diff frontierish doms_a)
+  G.VS.fold (G.VS.diff frontierish subs_a)
     ~init:df
     ~f:(fun g b -> G.add_edge g ~src:a ~dst:b)
-
 
 let dominance_frontier (doms: t) (cfg: CFG.t) =
   List.fold (CFG.vert_lst cfg)
     ~init:G.empty
     ~f:(fun g a ->
       dominance_frontier_single ~df:g ~doms ~cfg a)
-
 
 let to_dot ~oc ~label doms =
   G.to_dot ~oc ~label doms

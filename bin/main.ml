@@ -47,6 +47,7 @@ let process_genDom ~genDom prog : unit =
       let root = List.hd_exn f.order in
       let doms = Cfg.Dominance.dominators f in
       let domtree = Cfg.Dominance.dominance_tree root doms in
+      let domfront = Cfg.Dominance.dominance_frontier doms f.graph in
       Cfg.Dominance.to_dot ~oc ~label:f.name domtree );
   Out_channel.close oc
 
@@ -93,6 +94,5 @@ let command =
       flag "-S" (optional string)
         ~doc:"<path> Specify where to find input source file" in
     fun () -> process ~opts ~srcpath ~outpath ~genCfg ~genDom)
-
 
 let () = Command.run ~version:"0.0.1" command
