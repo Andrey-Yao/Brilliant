@@ -47,6 +47,8 @@ module type Unlabelled = sig
   val add_edge: t -> src:v -> dst:v -> t
 
   val vert_lst: t -> v list
+
+  val bfs: t -> v -> t
   
   (**Generic function for outputting graph to graphviz form.*)
   val to_dot : oc:Out_channel.t -> label:string -> ?nf:(v -> string)

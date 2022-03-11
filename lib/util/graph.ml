@@ -53,8 +53,8 @@ module MakeUnlabelled(VI: VIngredient) = struct
 
   let add_vert g v =
     match VM.add g ~key:v ~data:(VS.empty, VS.empty) with
-    | VM.(`Ok g') -> g'
-    | VM.(`Duplicate) -> g
+    | `Ok g' -> g'
+    | `Duplicate -> g
     
   let add_edge g ~src ~dst =
     let preds_src, succs_src = find g src in
@@ -67,6 +67,26 @@ module MakeUnlabelled(VI: VIngredient) = struct
   let del_vert g v = VM.remove g v
 
   let vert_lst g = VM.keys g
+
+  let bfs g root =
+    let set = ref VS.empty in
+    let edges = Stack.create () in
+    let queue = Queue.create () in
+    Queue.enqueue queue root;
+    set := VS.add !set root;
+    while queue |> Queue.is_empty |> not do
+      let u = Queue.dequeue_exn queue in
+      VS.iter (succs g u)
+        ~f:(fun v ->
+          if not (VI.equal u v) && not (VS.mem !set v)
+          then (Queue.enqueue queue v;
+                set := VS.add !set v;
+                Stack.push edges (u, v))
+          else ())
+    done;
+    Stack.fold edges
+      ~init:empty
+      ~f:(fun acc (u, v) -> add_edge acc ~src:u ~dst:v)
 
   let to_dot ~(oc:Out_channel.t) ~label
         ?(nf = default_np) ?(ef=default_ep) g =
@@ -139,8 +159,8 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
   
   let add_vert g v =
     match VM.add g ~key:v ~data:(ES.empty, ES.empty) with
-    | VM.(`Ok g') -> g'
-    | VM.(`Duplicate) -> g
+    | `Ok g' -> g'
+    | `Duplicate -> g
   
   let del_vert g v = VM.remove g v
 

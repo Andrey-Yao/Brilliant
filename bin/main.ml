@@ -38,7 +38,19 @@ let process_genCfg ~genCfg prog : unit =
   Bril.to_dot prog ~verbose:false ~oc;
   Out_channel.close oc
 
-let process ~opts ~srcpath ~outpath ~genCfg =
+let process_genDom ~genDom prog : unit =
+  let fname = match genDom with
+    | None -> "tmp_dom.dot"
+    | Some f -> f in
+  let oc = Out_channel.create fname in
+  List.iter prog ~f:(fun (f:Func.t) ->
+      let root = List.hd_exn f.order in
+      let doms = Cfg.Dominance.dominators f in
+      let domtree = Cfg.Dominance.dominance_tree root doms in
+      Cfg.Dominance.to_dot ~oc ~label:f.name domtree );
+  Out_channel.close oc
+
+let process ~opts ~srcpath ~outpath ~genCfg ~genDom =
   let ic =
     match srcpath with
     | None -> In_channel.stdin
@@ -52,6 +64,7 @@ let process ~opts ~srcpath ~outpath ~genCfg =
                    ~init: prog
                    ~f:(fun acc e -> optimize_single acc e) in
   process_genCfg ~genCfg prog';
+  process_genDom ~genDom prog';
   prog' |> Bril.to_json |> Basic.to_channel oc;
   In_channel.close ic;
   Out_channel.close oc
@@ -79,7 +92,7 @@ let command =
     and srcpath =
       flag "-S" (optional string)
         ~doc:"<path> Specify where to find input source file" in
-    fun () -> process ~opts ~srcpath ~outpath ~genCfg)
+    fun () -> process ~opts ~srcpath ~outpath ~genCfg ~genDom)
 
 
 let () = Command.run ~version:"0.0.1" command

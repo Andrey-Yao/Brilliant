@@ -35,13 +35,13 @@ let reverse_post_order ~order ~cfg
 (**Performs a single update in the dominator set for the 
    block [b] from [doms]. Returns [None] if no change happened.
    What are you doing, step dom?*)
-let step_dom (doms: t) (cfg: CFG.t) (b:string): t option =
+let step_dom all (doms:t) (cfg: CFG.t) (b:string): t option =
   let open G in
   let doms_b_old = succs doms b in
   let ss =
     CFG.VS.fold
       (CFG.preds cfg b)
-      ~init: VS.empty
+      ~init:all
       ~f:(fun acc p -> acc |> VS.inter (succs doms p))
   in
   let doms_b_new = VS.add ss b in
@@ -56,9 +56,9 @@ let step_dom (doms: t) (cfg: CFG.t) (b:string): t option =
 let dominators (f: Ir.Func.t): t =
   let open G in
   let rpo = reverse_post_order ~order:f.order ~cfg:f.graph in
-  assert(VS.equal (VS.of_list rpo) (full rpo |> vert_lst |> VS.of_list));
+  let all = VS.of_list rpo in
   let folder (doms, same) b =
-    match step_dom doms f.graph b with
+    match step_dom all doms f.graph b with
     | None -> (doms, same)
     | Some m -> (m, false)
   in
@@ -69,46 +69,29 @@ let dominators (f: Ir.Func.t): t =
   in
   converge (full rpo, false)
 
-
 (**This gives a tree*)
 let dominance_tree root (doms: t) =
-  let set = String.Hash_set.create () in
-  let edges = Queue.create () in
-  let queue = Queue.create () in
-  Queue.enqueue queue root;
-  Hash_set.add set root;
-  while queue |> Queue.is_empty |> not do
-    let u = Queue.dequeue_exn queue in
-    G.VS.iter (G.succs doms u)
-      ~f:(fun v ->
-        if String.(<>) u v && not (Hash_set.mem set v)
-        then (Queue.enqueue queue v;
-              Hash_set.add set v;
-              Queue.enqueue edges (u, v))
-        else ())
-  done;
-  Queue.fold edges
-    ~init: G.empty
-    ~f:(fun acc (u, v) -> G.add_edge acc ~src:u ~dst:v)
+  G.bfs doms root
 
-
-let dominance_frontier_single (doms: t) (cfg: CFG.t) b =
+let dominance_frontier_single ~(df: t) ~(doms: t) ~(cfg: CFG.t) a =
   (*Nodes one edge away from the submissive set*)
+  let doms_a = G.succs doms a in
   let frontierish =
-    G.VS.fold (G.succs doms b)
+    G.VS.fold doms_a
       ~init: CFG.VS.empty
-      ~f:(fun acc s -> s |> CFG.succs cfg |> CFG.VS.union acc)
+      ~f:(fun acc b ->
+        CFG.VS.remove (CFG.succs cfg b) b |> CFG.VS.union acc)
     |> CFG.VS.to_list |> G.VS.of_list in
-  G.VS.diff frontierish (G.succs doms b)
+  G.VS.fold (G.VS.diff frontierish doms_a)
+    ~init:df
+    ~f:(fun g b -> G.add_edge g ~src:a ~dst:b)
 
 
-let dominance_frontier (doms: t) (func: Ir.Func.t) =
-  List.fold func.order
-    ~init: G.empty
-    ~f:(fun g1 src ->
-      G.VS.fold (dominance_frontier_single doms func.graph src)
-        ~init: g1
-        ~f:(fun g2 dst -> G.add_edge g2 ~src ~dst))
+let dominance_frontier (doms: t) (cfg: CFG.t) =
+  List.fold (CFG.vert_lst cfg)
+    ~init:G.empty
+    ~f:(fun g a ->
+      dominance_frontier_single ~df:g ~doms ~cfg a)
 
 
 let to_dot ~oc ~label doms =

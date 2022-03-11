@@ -3,9 +3,9 @@ open OUnit2
 open Printf
 open Cfg
 
-module G = Dominance.G
-
-type t = Dominance.t
+module Dom = Dominance
+module G = Dom.G
+type t = Dom.t
 
 module PosetProperties = struct
 
@@ -43,6 +43,49 @@ module PosetProperties = struct
 end
 
 
-let test_all func =
-  let doms = Dominance.dominators func in
-  PosetProperties.test_all doms func.order func.name
+module DominanceProperties = struct
+
+
+end
+
+
+module DomTreeProperties = struct
+
+  let same_vertices doms1 doms2 =
+    let s1 = G.vert_lst doms1 in
+    let s2 = G.vert_lst doms2 in
+    G.VS.equal (G.VS.of_list s1) (G.VS.of_list s2)
+
+  let check_degree domtree =
+    let verts = G.vert_lst domtree in
+    List.for_all verts
+      ~f:(fun v -> G.VS.length (G.preds domtree v) <= 1)
+
+  let idempotent domtree root =
+    let domtree' = Dom.dominance_tree root domtree in
+    let verts = G.vert_lst domtree in
+    List.for_all verts
+      ~f:(fun v ->
+        (G.VS.equal (G.succs domtree v) (G.succs domtree' v))
+        && (G.VS.equal (G.preds domtree v) (G.preds domtree' v)))
+
+  let test_all domtree doms root name =
+    "Domtree " >:::
+    [
+      sprintf "Same vertices [%s]" name >:: (fun _ ->
+        assert_bool "ver" (same_vertices domtree doms));
+      sprintf "check_degree [%s]" name >:: (fun _ ->
+        assert_bool "deg" (check_degree domtree));
+      sprintf "idempotent [%s]" name >:: (fun _ ->
+        assert_bool "idm" (idempotent domtree root));
+    ]
+end
+
+let test_all (func: Ir.Func.t) =
+  let root = List.hd_exn func.order in
+  let doms = Dom.dominators func in
+  let domtree = Dom.dominance_tree root doms in
+  [
+    (* PosetProperties.test_all doms func.order func.name; *)
+    DomTreeProperties.test_all domtree doms root func.name
+  ]

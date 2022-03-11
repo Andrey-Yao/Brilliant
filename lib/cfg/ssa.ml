@@ -123,22 +123,21 @@ let esrap i stacks =
 
 let for_loop_1_once instr counts stacks =
   let open Instr in
-  match dest instr with
-  | Some ((v, _) as d) -> 
-     let instr' = match instr with
-       | Phi _ -> instr
-       | _ ->
-          let uses =
-            List.map (args instr)
-              ~f:(fun v -> esrap (parse v) stacks) in
-          set_args uses instr |> Option.value ~default:instr in
-     let vi = parse v in
-     let i = counts.(vi) in
-     stacks.(vi) <- i :: stacks.(vi);
-     counts.(vi) <- i + 1;
-     set_dest d instr |> Option.value ~default:instr'
-  | None -> instr
-
+  match instr with
+  | Phi _ -> instr
+  | _ ->
+     let uses =
+       List.map (args instr)
+         ~f:(fun v -> esrap (parse v) stacks) in
+     let instr' = set_args uses instr |> Option.value ~default:instr in
+     match dest instr' with
+     | Some (v, t) -> 
+        let vi = parse v in
+        let i = counts.(vi) in
+        stacks.(vi) <- i :: stacks.(vi);
+        counts.(vi) <- i + 1;
+        set_dest (esrap vi stacks, t) instr' |> Option.value ~default:instr'
+     | None -> instr'
 
 let for_loop_2_once y stacks instr =
   let open Instr in
@@ -199,7 +198,7 @@ let to_ssa (func: Func.t) =
   let entry = List.hd_exn func'.order in
   let var2typndefs = vars_to_defs_and_typs func' num_vars in
   let dominators = Dom.dominators func' in
-  let domfront = Dom.dominance_frontier dominators func' in
+  let domfront = Dom.dominance_frontier dominators func'.graph in
   let domtree = Dominance.dominance_tree entry dominators in
   let func'' = insert_phis func' domfront var2typndefs in
   rename_blks domtree num_vars func''
