@@ -1,0 +1,221 @@
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
+
+subgraph cluster_0 {
+label = "abs"
+"_B1" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">_B1</td></tr>
+<tr><td>zero: int = const 0</td></tr>
+<tr><td>is_neg: bool = lt a zero</td></tr>
+<tr><td>br is_neg mul_neg_one abs_res</td></tr>
+</table>> shape="plaintext"];
+
+"abs_res" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">abs_res</td></tr>
+<tr><td>abs_res</td></tr>
+<tr><td>ret a</td></tr>
+</table>> shape="plaintext"];
+
+"mul_neg_one" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">mul_neg_one</td></tr>
+<tr><td>mul_neg_one</td></tr>
+<tr><td>neg_one: int = const -1</td></tr>
+<tr><td>a: int = mul a neg_one</td></tr>
+</table>> shape="plaintext"];
+
+"_B1" -> "abs_res" [color="red"];
+
+"_B1" -> "mul_neg_one" [color="blue"];
+
+"mul_neg_one" -> "abs_res" ;
+
+}}
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
+
+subgraph cluster_0 {
+label = "mod"
+"_B1" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">_B1</td></tr>
+<tr><td>q: int = div a b</td></tr>
+<tr><td>aq: int = mul b q</td></tr>
+<tr><td>mod: int = sub a aq</td></tr>
+<tr><td>ret mod</td></tr>
+</table>> shape="plaintext"];
+
+}}
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
+
+subgraph cluster_0 {
+label = "gcd"
+"while.body" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">while.body</td></tr>
+<tr><td>while.body</td></tr>
+<tr><td>a: int = id b</td></tr>
+<tr><td>b: int = id mod</td></tr>
+<tr><td>jmp while.cond</td></tr>
+</table>> shape="plaintext"];
+
+"while.cond" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">while.cond</td></tr>
+<tr><td>while.cond</td></tr>
+<tr><td>mod: int = mod a b</td></tr>
+<tr><td>zero: int = const 0</td></tr>
+<tr><td>is_term: bool = eq mod zero</td></tr>
+<tr><td>br is_term while.finish while.body</td></tr>
+</table>> shape="plaintext"];
+
+"while.finish" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">while.finish</td></tr>
+<tr><td>while.finish</td></tr>
+<tr><td>ret b</td></tr>
+</table>> shape="plaintext"];
+
+"while.body" -> "while.cond" ;
+
+"while.cond" -> "while.body" [color="red"];
+
+"while.cond" -> "while.finish" [color="blue"];
+
+}}
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
+
+subgraph cluster_0 {
+label = "lcm"
+"_B1" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">_B1</td></tr>
+<tr><td>zero: int = const 0</td></tr>
+<tr><td>a_is_zero: bool = eq a zero</td></tr>
+<tr><td>br a_is_zero check_b is_good</td></tr>
+</table>> shape="plaintext"];
+
+"check_b" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">check_b</td></tr>
+<tr><td>check_b</td></tr>
+<tr><td>b_is_zero: bool = eq b zero</td></tr>
+<tr><td>br b_is_zero special_case is_good</td></tr>
+</table>> shape="plaintext"];
+
+"is_good" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">is_good</td></tr>
+<tr><td>is_good</td></tr>
+<tr><td>ab: int = mul a b</td></tr>
+<tr><td>ab: int = abs ab</td></tr>
+<tr><td>gcdab: int = gcd a b</td></tr>
+<tr><td>lcm: int = div ab gcdab</td></tr>
+<tr><td>ret lcm</td></tr>
+</table>> shape="plaintext"];
+
+"special_case" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">special_case</td></tr>
+<tr><td>special_case</td></tr>
+<tr><td>ret zero</td></tr>
+</table>> shape="plaintext"];
+
+"_B1" -> "check_b" [color="blue"];
+
+"_B1" -> "is_good" [color="red"];
+
+"check_b" -> "is_good" [color="red"];
+
+"check_b" -> "special_case" [color="blue"];
+
+}}
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
+
+subgraph cluster_0 {
+label = "orders"
+"for.body" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.body</td></tr>
+<tr><td>for.body</td></tr>
+<tr><td>br use_lcm lcm gcd</td></tr>
+</table>> shape="plaintext"];
+
+"for.body.print" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.body.print</td></tr>
+<tr><td>for.body.print</td></tr>
+<tr><td>print u ordu</td></tr>
+<tr><td>one: int = const 1</td></tr>
+<tr><td>u: int = add u one</td></tr>
+<tr><td>jmp for.cond</td></tr>
+</table>> shape="plaintext"];
+
+"for.cond" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.cond</td></tr>
+<tr><td>for.cond</td></tr>
+<tr><td>is_term: bool = eq u n</td></tr>
+<tr><td>br is_term for.finish for.body</td></tr>
+</table>> shape="plaintext"];
+
+"for.finish" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.finish</td></tr>
+<tr><td>for.finish</td></tr>
+<tr><td>ret</td></tr>
+</table>> shape="plaintext"];
+
+"gcd" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">gcd</td></tr>
+<tr><td>gcd</td></tr>
+<tr><td>gcdun: int = gcd u n</td></tr>
+<tr><td>ordu: int = div n gcdun</td></tr>
+</table>> shape="plaintext"];
+
+"lcm" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">lcm</td></tr>
+<tr><td>lcm</td></tr>
+<tr><td>lcm: int = lcm u n</td></tr>
+<tr><td>ordu: int = div lcm u</td></tr>
+<tr><td>jmp for.body.print</td></tr>
+</table>> shape="plaintext"];
+
+"for.body" -> "gcd" [color="red"];
+
+"for.body" -> "lcm" [color="blue"];
+
+"for.body.print" -> "for.cond" ;
+
+"for.cond" -> "for.body" [color="red"];
+
+"for.cond" -> "for.finish" [color="blue"];
+
+"gcd" -> "for.body.print" ;
+
+"lcm" -> "for.body.print" ;
+
+}}
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
+
+subgraph cluster_0 {
+label = "main"
+"_B1" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">_B1</td></tr>
+<tr><td>zero: int = const 0</td></tr>
+<tr><td>u: int = const 1</td></tr>
+<tr><td>n: int = abs n</td></tr>
+<tr><td>print zero u</td></tr>
+<tr><td>orders u n use_lcm</td></tr>
+</table>> shape="plaintext"];
+
+}}

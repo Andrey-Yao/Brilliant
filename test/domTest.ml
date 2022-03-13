@@ -1,12 +1,15 @@
 open! Core
+open Util.Common
 open OUnit2
 open Printf
 open Cfg
 
+module CFG = Ir.Func.G
 module Dom = Dominance
 module G = Dom.G
 type t = Dom.t
 
+(**The dominance relation is a poset*)
 module PosetProperties = struct
 
   (**Forall [b], [b] in [doms[b]]*)
@@ -45,8 +48,44 @@ end
 
 module DominanceProperties = struct
 
+  let rec enumerate_paths_help g src dst seen path paths =
+    Hash_set.add seen src;
+    Queue.enqueue path src;
+    if String.(src = dst)
+    then paths := Queue.to_list path :: !paths
+    else (CFG.VS.iter (CFG.succs g src)
+           ~f:(fun suc ->
+             if Hash_set.mem seen suc then ()
+             else enumerate_paths_help g suc dst seen path paths));
+    Hash_set.remove seen src
 
+  let enumerate_paths g src dst =
+    let seen = SHS.create () in
+    let paths = ref [] in
+    let path = Queue.create () in
+    enumerate_paths_help g src dst seen path paths;
+    List.map !paths ~f:(G.VS.of_list)
+
+  let check_dom_single doms cfg root v =
+    let doms_v = G.succs doms v in
+    let paths_v = enumerate_paths cfg root v in (*
+    List.iter paths_v ~f:(fun path ->
+        path |> G.VS.to_list |> List.to_string ~f:String.to_string |> print_endline); *)
+    List.for_all paths_v ~f:(fun p ->
+        G.VS.is_subset doms_v ~of_:p)
+
+  let test_all doms cfg name root =
+    let vertices = CFG.vert_lst cfg in
+    let tests =
+      List.map vertices
+        ~f:(fun v ->
+          sprintf "Doms of [%s]" v >::
+            (fun _ ->
+              assert_bool "path"
+                (check_dom_single doms cfg root v))) in
+    sprintf "Dominance [%s]" name >::: tests
 end
+
 
 
 module DomTreeProperties = struct
@@ -61,6 +100,7 @@ module DomTreeProperties = struct
     List.for_all verts
       ~f:(fun v -> G.VS.length (G.preds domtree v) <= 1)
 
+  (**Requires [domtree] to have only one connected component*)
   let idempotent domtree =
     let domtree' = Dom.submissive_tree domtree in
     let verts = G.vert_lst domtree in
@@ -70,13 +110,13 @@ module DomTreeProperties = struct
         && (G.VS.equal (G.preds domtree v) (G.preds domtree' v)))
 
   let test_all domtree doms name =
-    "Domtree " >:::
+    sprintf "Domtree [%s]" name >:::
     [
-      sprintf "Same vertices [%s]" name >:: (fun _ ->
+      "Same vertices" >:: (fun _ ->
         assert_bool "ver" (same_vertices domtree doms));
-      sprintf "check_degree [%s]" name >:: (fun _ ->
+      "Check_degree" >:: (fun _ ->
         assert_bool "deg" (check_degree domtree));
-      sprintf "idempotent [%s]" name >:: (fun _ -> 
+      "Idempotent">:: (fun _ -> 
         assert_bool "idm" (idempotent domtree));
     ]
 end
@@ -87,5 +127,6 @@ let test_all (func: Ir.Func.t) =
   let domtree = Dom.submissive_tree doms in
   [
     PosetProperties.test_all doms func.order func.name;
+    DominanceProperties.test_all doms func.graph func.name root;
     DomTreeProperties.test_all domtree doms func.name
   ]

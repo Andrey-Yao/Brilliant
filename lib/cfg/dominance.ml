@@ -38,9 +38,7 @@ let reverse_post_order ~order ~cfg
    What are you doing, step dom?*)
 let step_dom (doms: G.VS.t SHT.t) (cfg: CFG.t) (b:string): bool =
   let open G in
-  let find d v =
-    match SHT.find d v with
-      Some res -> res | None -> G.VS.empty in
+  let find d v = SHT.find_exn d v in
   let doms_b_old = find doms b in
   let ss =
     let preds_b = CFG.preds cfg b in
@@ -57,25 +55,30 @@ let step_dom (doms: G.VS.t SHT.t) (cfg: CFG.t) (b:string): bool =
   else (SHT.set doms ~key:b ~data:doms_b_new; true)
 
 (**[dominators f] gives a graph [g] such that the successors of 
-   [v] in [g] are exactly the nodes that dominate [g].*)
+   [v] in [g] are exactly the nodes that dominate [v].*)
 let dominators (f: Ir.Func.t): t =
   let open G in
   let rpo = reverse_post_order ~order:f.order ~cfg:f.graph in
   let full = VS.of_list rpo in
   let doms = SHT.create () in
   List.iter rpo ~f:(fun b -> SHT.set doms ~key:b ~data: full);
-  let changed = ref true in
-  (*Repeats till convergence*)
-  while !changed do
-    changed :=
-      List.fold rpo ~init:false
-        ~f:(fun acc b -> acc || (step_dom doms f.graph b))
-  done;
-  let folder b domz d = add_edge domz ~src:b ~dst:d in
-  List.fold rpo
-    ~init:empty
-    ~f:(fun domz b ->
-      VS.fold (SHT.find_exn doms b) ~init:domz ~f:(folder b))
+  match rpo with
+  | [] -> empty
+  | h :: [] -> add_edge empty ~src:h ~dst:h
+  | h :: t ->
+     SHT.set doms ~key:h ~data:(VS.singleton h);
+     let changed = ref true in
+     (*Repeats till convergence*)
+     while !changed do
+       changed :=
+         List.fold t ~init:false
+           ~f:(fun acc b -> acc || (step_dom doms f.graph b))
+     done;
+     let folder b domz d = add_edge domz ~src:b ~dst:d in
+     List.fold rpo
+       ~init:empty
+       ~f:(fun domz b ->
+         VS.fold (SHT.find_exn doms b) ~init:domz ~f:(folder b))
 
 (*TODO VERY INEFFICIENT RN*)
 (**[idom doms u v] is when [u] immediately dominates [v]*)

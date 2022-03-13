@@ -78,7 +78,7 @@ module MakeUnlabelled(VI: VIngredient) = struct
       VS.fold succs_v
         ~init:g' ~f:(fun acc s ->
           let preds_s, succs_s = find acc s in
-          VM.set acc ~key:s ~data:(preds_s, VS.remove succs_s v)) in
+          VM.set acc ~key:s ~data:(VS.remove preds_s v, succs_s)) in
     VM.remove g'' v
 
   let del_edge g ~src ~dst =
@@ -167,10 +167,10 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
   let add_edge g ~src ~edg ~dst =
     let preds_src, succs_src = find g src in
     let succs_src' = ES.add succs_src (edg, dst) in
-    let g = VM.set g ~key:src ~data:(preds_src, succs_src') in
-    let preds_dst, succs_dst = find g dst in
+    let g' = VM.set g ~key:src ~data:(preds_src, succs_src') in
+    let preds_dst, succs_dst = find g' dst in
     let preds_dst' = ES.add preds_dst (edg, src) in
-    VM.set g ~key:dst ~data:(preds_dst', succs_dst)
+    VM.set g' ~key:dst ~data:(preds_dst', succs_dst)
 
   (*
   let del_edge g ~src ~dst =
@@ -196,7 +196,7 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
       ES.fold succs_v
         ~init:g' ~f:(fun acc (e, s) ->
           let preds_s, succs_s = find acc s in
-          VM.set acc ~key:s ~data:(preds_s, ES.remove succs_s (e, s))) in
+          VM.set acc ~key:s ~data:(ES.remove preds_s (e, v), succs_s)) in
     VM.remove g'' v
 
   let vert_lst g = VM.keys g
