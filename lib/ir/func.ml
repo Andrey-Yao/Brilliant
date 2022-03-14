@@ -34,13 +34,11 @@ type t = {
 let next_block (instrs : Instr.t list) (func : t) (i : int ref) :
     Instr.t list * t =
   let open Instr in
-  let name =
-    match List.hd instrs with
-    | Some (Label l) -> l
+  let name, tail =
+    match instrs with
+    | Label l :: t -> l, t
     | _ ->
-        sprintf "_B%d"
-          (i := !i + 1;
-           !i)
+        sprintf "_B%d" (i := !i + 1; !i), instrs
   in
   (*The [curr] returned is in reversed order*)
   let rec step curr rest g =
@@ -56,12 +54,13 @@ let next_block (instrs : Instr.t list) (func : t) (i : int ref) :
         let g2 = add_edge ~src ~edg:False ~dst:l2 g1 in
         (h :: curr, t, g2)
     | (Ret _ as h) :: t -> (h :: curr, t, add_vert g name)
-    | h :: ((Label blk :: _) as rst) ->
-        (h :: curr, rst, add_edge ~src ~edg:Next ~dst:blk g)
+    (*Peek ahead to see if it is a label next*)
+    | (Label blk as h) :: rst ->
+        (curr, h :: rst, add_edge ~src ~edg:Next ~dst:blk g)
     | h :: t -> step (h :: curr) t g
   in
   let graph = G.add_vert func.graph name in
-  let curr, rest, graph' = step [] instrs graph in
+  let curr, rest, graph' = step [] tail graph in
   let lst = List.rev curr in
   let map = String.Map.add_exn ~key:name ~data:lst func.map in
   (rest, { func with order = name :: func.order; map; graph = graph' })
@@ -130,7 +129,8 @@ let of_json (json: Yojson.Basic.t) =
 
 let to_json (g: t) : Yojson.Basic.t =
   let instrs =
-    List.map ~f:(fun n -> SM.find_exn g.map n) g.order
+    List.map g.order
+      ~f:(fun n -> Instr.Label n :: (SM.find_exn g.map n))
     |> List.concat in 
   `Assoc
     ([

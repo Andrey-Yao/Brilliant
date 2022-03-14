@@ -87,27 +87,33 @@ module DominanceProperties = struct
 end
 
 
+module DomFrontProperties = struct
 
-module DomTreeProperties = struct
+
+end
+
+
+
+module SubTreeProperties = struct
 
   let same_vertices doms1 doms2 =
     let s1 = G.vert_lst doms1 in
     let s2 = G.vert_lst doms2 in
     G.VS.equal (G.VS.of_list s1) (G.VS.of_list s2)
 
-  let check_degree domtree =
-    let verts = G.vert_lst domtree in
+  let check_degree subtree =
+    let verts = G.vert_lst subtree in
     List.for_all verts
-      ~f:(fun v -> G.VS.length (G.preds domtree v) <= 1)
+      ~f:(fun v -> G.VS.length (G.preds subtree v) <= 1)
 
-  (**Requires [domtree] to have only one connected component*)
-  let idempotent domtree =
-    let domtree' = Dom.submissive_tree domtree in
+  (**Requires [subtree] to have only one connected component*)
+  let idempotent subtree =
+    let domtree = subtree |> Dom.G.rev |> Dom.submissive_tree in
     let verts = G.vert_lst domtree in
     List.for_all verts
       ~f:(fun v ->
-        (G.VS.equal (G.succs domtree v) (G.succs domtree' v))
-        && (G.VS.equal (G.preds domtree v) (G.preds domtree' v)))
+        (G.VS.equal (G.succs domtree v) (G.succs domtree v))
+        && (G.VS.equal (G.preds domtree v) (G.preds domtree v)))
 
   let test_all domtree doms name =
     sprintf "Domtree [%s]" name >:::
@@ -128,5 +134,5 @@ let test_all (func: Ir.Func.t) =
   [
     PosetProperties.test_all doms func.order func.name;
     DominanceProperties.test_all doms func.graph func.name root;
-    DomTreeProperties.test_all domtree doms func.name
+    SubTreeProperties.test_all domtree doms func.name
   ]

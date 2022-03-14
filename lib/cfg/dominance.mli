@@ -8,6 +8,6 @@ val dominators: Ir.Func.t -> t
 val submissive_tree: t -> t
 
 (**Dominance frontier*)
-val dominance_frontier: t -> Ir.Func.G.t -> t
+val submissive_frontier: t -> Ir.Func.G.t -> t
 
 val to_dot: oc:Stdio.Out_channel.t -> label:string -> t -> unit

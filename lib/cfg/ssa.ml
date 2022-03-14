@@ -75,13 +75,17 @@ let vars_to_defs_and_typs (func: Func.t) num_vars =
   arr
 
 (**Adding prepending phi function. Aware of labels*)
-let stick_phi_in_funcs phi funcs =
+let stick_phi_in_func phi funcs =
   match funcs with
   | (Instr.Label _ as h) :: t -> h :: phi :: t
   | _ -> phi :: funcs 
 
+
+(* let insert_phis (func: Func.t) subfront var2typndefs = *)
+
+  
 (**First part of the algorithm... *)
-let insert_phis (func: Func.t) domfrt var2typndefs =
+let insert_phis (func: Func.t) subfront var2typndefs =
   let num_vars = Array.length var2typndefs in
   (*has_phi_for_v[i] is the set of blocks with phi vi*)
   let has_phi_for_v = Array.create ~len:num_vars SS.empty in
@@ -97,14 +101,14 @@ let insert_phis (func: Func.t) domfrt var2typndefs =
       else let args = Func.G.preds func.graph b |> Func.G.VS.to_list
                       |> List.map ~f:(fun lbl -> (lbl, var)) in
            has_phi_for_v.(vi) <- SS.add hpfvi b;
-           stick_phi_in_funcs (Instr.Phi ((var, fst vtnd), args)) instrs
+           stick_phi_in_func (Instr.Phi ((var, fst vtnd), args)) instrs
     in
     let pair = var2typndefs.(vi) in
     var2typndefs.(vi) <- (fst pair, SS.add (snd pair) b);
     SM.set b2i ~key:b ~data:instrs_new in
   let folder_def vi = fun b2i d ->
-    let domf_d = Dom.G.succs domfrt d in
-    Dom.G.VS.fold domf_d ~init:b2i ~f:(folder_dom vi) in
+    let subfront_d = Dom.G.succs subfront d in
+    Dom.G.VS.fold subfront_d ~init:b2i ~f:(folder_dom vi) in
   let folder_var = fun b2i vi ->
     var2typndefs.(vi) |> snd |> SS.fold ~init:b2i ~f:(folder_def vi) in
   let b2i_new =
@@ -121,36 +125,36 @@ let esrap i stacks =
 
 let for_loop_1_once instr counts stacks =
   let open Instr in
-  match instr with
+  let instr' = begin match instr with
   | Phi _ -> instr
   | _ ->
      let uses =
        List.map (args instr)
          ~f:(fun v -> esrap (parse v) stacks) in
-     let instr' = set_args uses instr |> Option.value ~default:instr in
-     match dest instr' with
-     | Some (v, t) -> 
-        let vi = parse v in
-        let i = counts.(vi) in
-        stacks.(vi) <- i :: stacks.(vi);
-        counts.(vi) <- i + 1;
-        set_dest (esrap vi stacks, t) instr' |> Option.value ~default:instr'
-     | None -> instr'
+     set_args uses instr |> Option.value ~default:instr end in
+  match dest instr' with
+  | Some (v, t) -> 
+     let vi = parse v in
+     let i = counts.(vi) in
+     stacks.(vi) <- i :: stacks.(vi);
+     counts.(vi) <- i + 1;
+     set_dest (esrap vi stacks, t) instr' |> Option.value ~default:instr'
+  | None -> instr'
 
-let for_loop_2_once y stacks instr =
+let for_loop_2_once x stacks instr =
   let open Instr in
   match instr with
   | Phi (dst, lst) ->
      let lst' = List.map lst
                   ~f:(fun (lbl, arg) ->
-                    if String.(lbl = y)
+                    if String.(lbl = x)
                     then (lbl, esrap (parse arg) stacks)
                     else (lbl, arg)) in
      Phi (dst, lst')
   | _ -> instr
 
 
-let rec rename_block_help dt b2i cfg stacks counts x =
+let rec rename_block_help subtree b2i cfg stacks counts x =
   let instrs = SM.find_exn b2i x in
   (*Old LHS to be popped at the end of functions*)
   let old_asses = List.filter_map instrs ~f:Instr.dest in
@@ -163,12 +167,12 @@ let rec rename_block_help dt b2i cfg stacks counts x =
       ~init: b2i'
       ~f:(fun map y ->
         let ins = SM.find_exn map y in
-        let ins' = List.map ins ~f:(for_loop_2_once y stacks) in
+        let ins' = List.map ins ~f:(for_loop_2_once x stacks) in
         SM.set map ~key:y ~data:ins') in
-  let b2i''' = Dom.G.VS.fold (Dom.G.succs dt x)
+  let b2i''' = Dom.G.VS.fold (Dom.G.succs subtree x)
                  ~init: b2i''
                  ~f:(fun map y ->
-                   rename_block_help dt map cfg stacks counts y) in
+                   rename_block_help subtree map cfg stacks counts y) in
   List.iter old_asses
     ~f:(fun dst ->
       let i = dst |> fst |> parse in
@@ -176,7 +180,7 @@ let rec rename_block_help dt b2i cfg stacks counts x =
   b2i'''
 
 
-let rename_blks domtree num_vars (func: Func.t) : Func.t =
+let rename_blks subtree num_vars (func: Func.t) : Func.t =
   let stacks = Array.create ~len:num_vars [] in
   let counts = Array.create ~len:num_vars 0 in
   (*Because func args aliases are already defined in decoy*)
@@ -185,8 +189,9 @@ let rename_blks domtree num_vars (func: Func.t) : Func.t =
     counts.(i) <- 1
   done;
   (*Not decoy!! Actual entry block*)
-  let entry_real = List.nth_exn func.order 1 in
-  let b2i = rename_block_help domtree func.map func.graph
+  let entry_real =
+    List.nth_exn func.order 1 in
+  let b2i = rename_block_help subtree func.map func.graph
               stacks counts entry_real in
   { func with map = b2i }
 
@@ -195,8 +200,8 @@ let to_ssa (func: Func.t) =
   let func', num_vars = preprocess func in
   let var2typndefs = vars_to_defs_and_typs func' num_vars in
   let dominators = Dom.dominators func' in
-  let domfront = Dom.dominance_frontier dominators func'.graph in
-  let domtree = Dom.submissive_tree dominators in
-  let func'' = insert_phis func' domfront var2typndefs in
-  rename_blks domtree num_vars func''
+  let subfront = Dom.submissive_frontier dominators func'.graph in
+  let subtree = Dom.submissive_tree dominators in
+  let func'' = insert_phis func' subfront var2typndefs in
+  rename_blks subtree num_vars func''
   

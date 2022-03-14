@@ -92,32 +92,33 @@ let idom doms u v =
 (**This gives a tree*)
 let submissive_tree (doms: t) =
   let folder u g v =
-    if idom doms u v then G.add_edge g ~src:u ~dst:v else
-      G.add_vert g u in
+    if idom doms u v then G.add_edge g ~src:u ~dst:v
+    else G.add_vert (G.add_vert g u) v in
   List.fold (G.vert_lst doms)
     ~init:G.empty
     ~f:(fun g u ->
-      G.VS.fold (G.succs doms u) ~init:g
+      G.VS.fold (G.preds doms u) ~init:g
         ~f:(folder u))
 
-let dominance_frontier_single ~(df: t) ~(doms: t) ~(cfg: CFG.t) a =
-  (*Nodes one edge away from the submissive set*)
+let submissive_frontier_single ~(df: t) ~(doms: t) ~(cfg: CFG.t) a =
+  (*Nodes dominated by a*)
   let subs_a = G.preds doms a in
   let frontierish =
     G.VS.fold subs_a
       ~init: CFG.VS.empty
       ~f:(fun acc b ->
         b |> CFG.succs cfg |> CFG.VS.union acc)
-    |> CFG.VS.to_list |> G.VS.of_list in
-  G.VS.fold (G.VS.diff frontierish subs_a)
+    |> G.VS.map ~f:(fun x -> x) in
+  G.VS.fold (G.VS.diff frontierish (G.VS.remove subs_a a))
     ~init:df
     ~f:(fun g b -> G.add_edge g ~src:a ~dst:b)
 
-let dominance_frontier (doms: t) (cfg: CFG.t) =
+let submissive_frontier (doms: t) (cfg: CFG.t) =
   List.fold (CFG.vert_lst cfg)
     ~init:G.empty
     ~f:(fun g a ->
-      dominance_frontier_single ~df:g ~doms ~cfg a)
+      let g' = G.add_vert g a in
+      submissive_frontier_single ~df:g' ~doms ~cfg a)
 
 let to_dot ~oc ~label doms =
   G.to_dot ~oc ~label doms

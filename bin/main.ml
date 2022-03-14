@@ -46,9 +46,9 @@ let process_genDom ~genDom prog : unit =
   List.iter prog ~f:(fun (f:Func.t) ->
       let root = List.hd_exn f.order in
       let doms = Cfg.Dominance.dominators f in
-      let domtree = Cfg.Dominance.submissive_tree doms in
-      let domfront = Cfg.Dominance.dominance_frontier doms f.graph in
-      Cfg.Dominance.to_dot ~oc ~label:f.name doms );
+      let subtree = Cfg.Dominance.submissive_tree doms in
+      let subfront = Cfg.Dominance.submissive_frontier doms f.graph in
+      Cfg.Dominance.to_dot ~oc ~label:f.name subfront );
   Out_channel.close oc
 
 let process ~opts ~srcpath ~outpath ~genCfg ~genDom =
