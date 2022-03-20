@@ -2,7 +2,7 @@ open! Core
 open Util.Common
 open OUnit2
 open Printf
-open Cfg
+open Global
 
 module CFG = Ir.Func.G
 module Dom = Dominance

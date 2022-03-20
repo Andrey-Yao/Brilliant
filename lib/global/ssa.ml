@@ -35,14 +35,12 @@ let preprocess (func: Func.t) =
     | None -> instr1 in
   let process_blk blk = List.map blk ~f:instr_folder in
   (*If func has arguments, add extra block at start*)
-  let decoy_content = match func.args with
-    | [] -> [ Instr.Nop ]
-    | lst -> begin
-        (*Copies argk into vk for each k*)
-        List.mapi lst
-          ~f:(fun i (a, t) ->
-            let dst = (sprintf "v%d_0" i, t) in
-            Instr.Unary (dst, Op.Unary.Id, a)) end in
+  let decoy_content = 
+    (*Copies argk into vk for each k*)
+    List.mapi func.args
+      ~f:(fun i (a, t) ->
+        let dst = (sprintf "v%d_0" i, t) in
+        Instr.Unary (dst, Op.Unary.Id, a)) in
   let decoy = "_decoy" in
   let new_map = SM.set (SM.map func.map ~f:process_blk)
                   ~key:decoy ~data:decoy_content in
@@ -79,10 +77,6 @@ let stick_phi_in_func phi funcs =
   match funcs with
   | (Instr.Label _ as h) :: t -> h :: phi :: t
   | _ -> phi :: funcs 
-
-
-(* let insert_phis (func: Func.t) subfront var2typndefs = *)
-
   
 (**First part of the algorithm... *)
 let insert_phis (func: Func.t) subfront var2typndefs =
@@ -101,7 +95,7 @@ let insert_phis (func: Func.t) subfront var2typndefs =
       else let args = Func.G.preds func.graph b |> Func.G.VS.to_list
                       |> List.map ~f:(fun lbl -> (lbl, var)) in
            has_phi_for_v.(vi) <- SS.add hpfvi b;
-           stick_phi_in_func (Instr.Phi ((var, fst vtnd), args)) instrs
+           (Instr.Phi ((var, fst vtnd), args)) :: instrs
     in
     let pair = var2typndefs.(vi) in
     var2typndefs.(vi) <- (fst pair, SS.add (snd pair) b);

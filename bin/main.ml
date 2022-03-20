@@ -1,5 +1,6 @@
 open! Core
 open Yojson
+open Global
 open Ir
 
 
@@ -10,7 +11,7 @@ let opt_local opt blck =
 (**Global optimizations*)
 let opt_global opt func =
   if String.(opt = "SSA")
-  then Cfg.Ssa.to_ssa func
+  then Ssa.to_ssa func
   else func
 
 (**Interprocedural optimizations*)
@@ -30,42 +31,52 @@ let optimize_single prog optimization =
   | 'i' -> opt_universal opt prog
   | _ -> failwith "Unsupported optimization type"
 
-let process_genCfg ~genCfg prog : unit =
-  let fname = match genCfg with
-    | None -> "tmp_cfg.dot"
-    | Some f -> f in
-  let oc = Out_channel.create fname in
+let process_gen_cfg (dir, prog, fname): unit =
+  let base = sprintf "%s_cfg.dot" fname in
+  let path = Filename.concat dir base in
+  let oc = Out_channel.create path in
   Bril.to_dot prog ~verbose:false ~oc;
   Out_channel.close oc
 
-let process_genDom ~genDom prog : unit =
-  let fname = match genDom with
-    | None -> "tmp_dom.dot"
-    | Some f -> f in
-  let oc = Out_channel.create fname in
+let process_gen_dom (dir, prog, fname): unit =
+  let base = sprintf "%s_dom.dot" fname in
+  let path = Filename.concat dir base in
+  let oc = Out_channel.create path in
   List.iter prog ~f:(fun (f:Func.t) ->
-      let root = List.hd_exn f.order in
-      let doms = Cfg.Dominance.dominators f in
-      let subtree = Cfg.Dominance.submissive_tree doms in
-      let subfront = Cfg.Dominance.submissive_frontier doms f.graph in
-      Cfg.Dominance.to_dot ~oc ~label:f.name subfront );
+      (* let root = List.hd_exn f.order in *)
+      let doms = Dominance.dominators f in
+      (* let subtree = Cfg.Dominance.submissive_tree doms in
+         let subfront = Cfg.Dominance.submissive_frontier doms f.graph in *)
+      Dominance.to_dot ~oc ~label:f.name doms );
   Out_channel.close oc
 
-let process ~opts ~srcpath ~outpath ~genCfg ~genDom =
-  let ic =
-    match srcpath with
-    | None -> In_channel.stdin
-    | Some p -> In_channel.create p in
+
+let process_aux gen dir prog fname =
+  let tuple = (dir, prog, fname) in
+  let iterator g =
+    if String.(g = "cfg")
+    then process_gen_cfg tuple
+    else if String.(g = "dom")
+    then process_gen_dom tuple in
+  List.iter gen ~f:iterator
+
+let process ~opts ~gen ~out_dir ~out_path ~src_file =
+  let ic, fname =
+    match src_file with
+    | None -> (In_channel.stdin, "tmp")
+    | Some p ->
+       (In_channel.create p,
+       p |> Filename.basename |> Filename.chop_extension) in
   let oc =
-    match outpath with
+    match out_path with
     | None -> Out_channel.stdout
     | Some p -> Out_channel.create p in
+  let dir_aux = match out_dir with | None -> "." | Some p -> p in
   let prog : Bril.t = ic |> Basic.from_channel |> Bril.of_json in
   let prog' = List.fold opts
                    ~init: prog
                    ~f:(fun acc e -> optimize_single acc e) in
-  process_genCfg ~genCfg prog';
-  process_genDom ~genDom prog';
+  process_aux gen dir_aux prog' fname;
   prog' |> Bril.to_json |> Basic.to_channel oc;
   In_channel.close ic;
   Out_channel.close oc
@@ -76,23 +87,28 @@ let command =
     ~summary:"Brilliant, the compiler optimizer for BRIL"
     ~readme:(fun () -> "more info...")
     Core.Command.Let_syntax.(
-    let%map_open opts =
-      flag "-opts" (listed string)
+    let%map_open
+        opts =
+      flag "-O" (listed string)
         ~doc:
-        "What to output. Default is just the json file.\n\
-         Additional options: [cfg]"
-    and genCfg =
-      flag "-cfg" (optional string)
-        ~doc:"File name to output the cfg dot file"
-    and genDom =
-      flag "-dom" (optional string)
-        ~doc:"File name to output the dominance graph"
-    and outpath =
+        "Optimizations to be executed sequentially.\n\
+         Format: {l|g|i}[OPT], for local, global, and procedural
+         optimizations/transformations."
+    and gen =
+      flag "-G" (listed string)
+        ~doc:"What to generate, i.e. [cfg], [dom],..."
+    and out_dir =
+      flag "-d" (optional string)
+        ~doc:"<path> Specify where to place the outputed files.\n\
+              Default to current working directory"
+    and out_path =
       flag "-D" (optional string)
-        ~doc:"<path> Specify where to place the process program"
-    and srcpath =
+        ~doc:"<path> Where to write the transformed program.\n\
+              If not supplied, outputs to stdout"
+    and src_file =
       flag "-S" (optional string)
-        ~doc:"<path> Specify where to find input source file" in
-    fun () -> process ~opts ~srcpath ~outpath ~genCfg ~genDom)
+        ~doc:"<path> location of the source file.\n\
+              If not supplied, read from stdin instead." in
+    fun () -> process ~opts ~gen ~out_dir ~out_path ~src_file)
 
 let () = Command.run ~version:"0.0.1" command

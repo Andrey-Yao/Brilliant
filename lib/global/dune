@@ -1,5 +1,5 @@
 (library
-(name cfg)
+(name global)
 (libraries ir util core)
 (preprocess
 (pps ppx_jane)))	

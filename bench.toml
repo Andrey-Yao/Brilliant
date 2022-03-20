@@ -1,6 +1,6 @@
 extract = 'total_dyn_inst: (\d+)'
 benchmarks = '../bril/benchmarks/*.bril'
-timeout = 10
+timeout = 15
 
 [runs.baseline]
 pipeline = [
@@ -11,6 +11,6 @@ pipeline = [
 [runs.myopt]
 pipeline = [
     "bril2json",
-    "dune exec -- bin/main.exe",
+    "dune exec -- bin/main.exe -O gSSA",
     "brili -p {args}",
 ]
