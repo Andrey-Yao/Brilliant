@@ -2,9 +2,9 @@
 open! Core
 open! Util.Common
 
-type dest = string * Bril_type.t [@@deriving compare, equal, sexp_of]
-type label = string [@@deriving compare, equal, sexp_of]
-type arg = string [@@deriving compare, equal, sexp_of]
+type dest = string * Bril_type.t [@@deriving compare, equal, sexp]
+type label = string [@@deriving compare, equal, sexp]
+type arg = string [@@deriving compare, equal, sexp]
 
 type t =
   | Label of label
@@ -26,7 +26,7 @@ type t =
   | Store of (arg * arg)
   | Load of (dest * arg)
   | PtrAdd of (dest * arg * arg)
-[@@deriving compare, equal, sexp_of]
+[@@deriving compare, equal, sexp]
 
 let to_string =
   let dest_to_string (name, bril_type) =
@@ -284,6 +284,14 @@ let to_json =
   | PtrAdd (dest, arg1, arg2) ->
       build_op ~op:"ptradd" ~args:[ arg1; arg2 ] ~dest ()
 
+let update_labels instr old neu =
+  let switch s = if String.(s = old) then neu else s
+  in
+  match instr with
+  | Jmp lbl -> Jmp (switch lbl)
+  | Br (cond, l, r) -> Br (cond, switch l, switch r)
+  | ins -> ins
+  
 let opcode instr : string =
   match instr with
   | Label _ -> "label"

@@ -1,5 +1,6 @@
 (executable
  (name main)
- (libraries core df global ir)
- (preprocess
-  (pps ppx_jane)))
+  (preprocess	
+  (pps ppx_jane))	
+ (libraries core_unix.command_unix core df global ir)
+)

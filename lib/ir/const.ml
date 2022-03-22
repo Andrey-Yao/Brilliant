@@ -3,7 +3,7 @@ open! Core
 open! Util.Common
 
 type t = Int of int | Bool of bool | Float of float
-[@@deriving compare, equal, hash, sexp_of]
+[@@deriving compare, equal, hash, sexp]
 
 let to_string = function
   | Int i -> Int.to_string i

@@ -1,7 +1,7 @@
 open! Core
 open OUnit2
 open Ir
-
+module Sys = Sys_unix
 
 let _ =
   Sys.getcwd () |> print_endline;

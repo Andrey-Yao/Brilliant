@@ -3,7 +3,6 @@ open Yojson
 open Global
 open Ir
 
-
 (**Local optimizations*)
 let opt_local opt blck =
   ignore opt; blck
@@ -83,10 +82,10 @@ let process ~opts ~gen ~out_dir ~out_path ~src_file =
   
 
 let command =
-  Core.Command.basic
+  Command.basic
     ~summary:"Brilliant, the compiler optimizer for BRIL"
     ~readme:(fun () -> "more info...")
-    Core.Command.Let_syntax.(
+    Command.Let_syntax.(
     let%map_open
         opts =
       flag "-O" (listed string)
@@ -111,4 +110,4 @@ let command =
               If not supplied, read from stdin instead." in
     fun () -> process ~opts ~gen ~out_dir ~out_path ~src_file)
 
-let () = Command.run ~version:"0.0.1" command
+let () = Command_unix.run ~version:"0.0.1" command

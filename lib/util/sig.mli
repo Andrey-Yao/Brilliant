@@ -18,7 +18,7 @@ module type Common = sig
   type t
   type v
 
-  module VS: Core_kernel.Set_intf.S with type Elt.t = v
+  module VS: Core.Set_intf.S with type Elt.t = v
 
   (**[empty] makes an empty graph*)
   val empty: t
@@ -28,6 +28,8 @@ module type Common = sig
   
   (**Removes [n] and its associated edges from [g]*)
   val del_vert: t -> v -> t
+
+  val del_edge: t -> src:v -> dst:v -> t
 
   val vert_lst: t -> v list
   
@@ -48,8 +50,6 @@ module type Unlabelled = sig
   (**adds edge [e]. Creates [src] and [dst] nodes if missing*)
   val add_edge: t -> src:v -> dst:v -> t
 
-  val del_edge: t -> src:v -> dst:v -> t
-
   val vert_lst: t -> v list
 
   val bfs: t -> v -> t
@@ -65,7 +65,7 @@ module type Labelled = sig
   include Common
   type e
   type edge = e * v
-  module ES: Core_kernel.Set_intf.S with type Elt.t = edge
+  module ES: Core.Set_intf.S with type Elt.t = edge
 
   (**adds edge [e]. Creates [src] and [dst] nodes if missing*)
   val add_edge: t -> src:v -> edg:e -> dst:v -> t

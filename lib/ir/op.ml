@@ -2,7 +2,7 @@
 open! Core
 
 module Make (M : sig
-  type t [@@deriving compare, equal, hash, sexp_of]
+  type t [@@deriving compare, equal, sexp]
 
   val by_name : (string * t) list
 end) =
@@ -39,7 +39,7 @@ module Binary = struct
       | Fge
       | And
       | Or
-    [@@deriving compare, equal, hash, sexp_of]
+    [@@deriving compare, equal, sexp]
 
     let by_name =
       [
@@ -120,7 +120,7 @@ end
 
 module Unary = struct
   module T = struct
-    type t = Not | Id [@@deriving compare, equal, hash, sexp_of]
+    type t = Not | Id [@@deriving compare, equal, hash, sexp]
 
     let by_name = [ ("not", Not); ("id", Id) ]
   end

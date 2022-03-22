@@ -1,5 +1,5 @@
 (test
  (name test)
  (preprocess
-  (pps ppx_jane -allow-unannotated-ignores))
- (libraries ir core df ounit2))
+  (pps ppx_jane))
+ (libraries ir core_unix.sys_unix core unix df ounit2))

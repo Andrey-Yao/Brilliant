@@ -2,7 +2,7 @@
 open! Core
 
 type t = IntType | BoolType | FloatType | PtrType of t
-[@@deriving compare, equal, hash, sexp_of]
+[@@deriving compare, equal, hash, sexp]
 
 val of_json : Yojson.Basic.t -> t
 val of_json_opt : Yojson.Basic.t -> t option

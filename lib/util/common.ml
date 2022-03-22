@@ -12,3 +12,10 @@ module SM = String.Map
 module SS = String.Set
 module SHT = Hashtbl.Make(String)
 module SHS = String.Hash_set
+
+(**String * Int Set*)
+module SIS =
+  Set.Make(
+      struct
+        type t = string * int[@@deriving compare, hash, sexp]
+      end)

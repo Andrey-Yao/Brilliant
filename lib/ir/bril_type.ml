@@ -3,7 +3,7 @@
 open! Core
 
 type t = IntType | BoolType | FloatType | PtrType of t
-[@@deriving compare, equal, hash, sexp_of]
+[@@deriving compare, equal, hash, sexp]
 
 let rec of_json =
   let open Yojson.Basic.Util in

@@ -1,6 +1,0 @@
-(library
- (name df)
- (libraries ir core global)
- (preprocess
-  (pps ppx_jane))
- (modules_without_implementation sig))

@@ -199,6 +199,16 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
           VM.set acc ~key:s ~data:(ES.remove preds_s (e, v), succs_s)) in
     VM.remove g'' v
 
+  let del_edge g ~src ~dst =
+    let preds_src, succs_src = find g src in
+    let succs_src' = ES.filter succs_src
+                       ~f:(fun e -> e |> snd |> VI.equal dst |> not) in
+    let g = VM.set g ~key:src ~data:(preds_src, succs_src') in
+    let preds_dst, succs_dst = find g dst in
+    let preds_dst' = ES.filter preds_dst
+                       ~f:(fun e -> e |> snd |> VI.equal src |> not) in
+    VM.set g ~key:dst ~data:(preds_dst', succs_dst)
+
   let vert_lst g = VM.keys g
 
   let to_dot ~(oc:Out_channel.t) ~label

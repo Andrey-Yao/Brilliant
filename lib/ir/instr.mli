@@ -1,8 +1,8 @@
 (*modified from https://github.com/sampsyo/bril/tree/main/bril-ocaml*)
 open! Core
 
-type dest = string * Bril_type.t [@@deriving compare, equal, sexp_of]
-type label = string [@@deriving compare, equal, sexp_of]
+type dest = string * Bril_type.t [@@deriving compare, equal, sexp]
+type label = string [@@deriving compare, equal, sexp]
 type arg = label
 
 type t =
@@ -25,7 +25,7 @@ type t =
   | Store of (arg * arg)
   | Load of (dest * arg)
   | PtrAdd of (dest * arg * arg)
-[@@deriving compare, equal, sexp_of]
+[@@deriving compare, equal, sexp]
 
 val dest : t -> dest option
 val set_dest : dest -> t -> t option
@@ -35,3 +35,4 @@ val of_json : Yojson.Basic.t -> t
 val to_json : t -> Yojson.Basic.t
 val to_string : t -> string
 val opcode : t -> string
+val update_labels : t -> string -> string -> t
