@@ -169,7 +169,7 @@ let to_dot ~verbose ~oc f =
              | False -> "[color=\"red\"]"
              | _ -> "" end |> sprintf "\"%s\" -> \"%s\" %s;\n" s d)
   in
-  if verbose
+  if not verbose
   then G.to_dot f.graph ~oc ~label:f.name ~ef
   else G.to_dot f.graph ~oc ~label:f.name ~nf ~ef
 

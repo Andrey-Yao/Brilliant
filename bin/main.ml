@@ -33,12 +33,11 @@ let optimize_single prog optimization =
   | _ -> failwith "Unsupported optimization type"
 
 let process_gen_cfg (dir, prog, fname): unit =
-  let base = sprintf "%s_cfg.png" fname in
+  let base = sprintf "%s_cfg.dot" fname in
   let path = Filename.concat dir base in
-  let 
-  let oc = Core_unix.
-  let fin = Core_unix
-  Bril.to_dot prog ~verbose:false ~oc;
+  let oc = Out_channel.create path in
+  List.iter prog ~f:(fun (f:Func.t) ->
+      Func.to_dot ~verbose:true ~oc f);
   Out_channel.close oc
 
 let process_gen_dom (dir, prog, fname): unit =
