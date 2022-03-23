@@ -1,0 +1,91 @@
+digraph {
+fontname="Times"
+fontsize="20"
+penwidth=1
+node[fontsize="16" shape="box" fontname="Times"]
+
+subgraph cluster_0 {
+label = "main"
+"_B1" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">_B1</td></tr>
+<tr><td>n: int = id input</td></tr>
+<tr><td>v0: int = const 0</td></tr>
+<tr><td>v1: int = const 1</td></tr>
+<tr><td>v2: int = const 2</td></tr>
+<tr><td>sum: int = id v1</td></tr>
+<tr><td>i: int = id v2</td></tr>
+<tr><td>result: int = id v1</td></tr>
+</table>> shape="plaintext"];
+
+"_pre_for.incre_" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">_pre_for.incre_</td></tr>
+<tr><td>jmp for.incre</td></tr>
+</table>> shape="plaintext"];
+
+"for.body" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.body</td></tr>
+<tr><td>qut: int = div n i</td></tr>
+<tr><td>mpt: int = mul qut i</td></tr>
+<tr><td>dif: int = sub n mpt</td></tr>
+<tr><td>comp1: bool = eq dif v0</td></tr>
+<tr><td>br comp1 if.body _pre_for.incre_</td></tr>
+</table>> shape="plaintext"];
+
+"for.cond.1" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.cond.1</td></tr>
+<tr><td>ii: int = mul i i</td></tr>
+<tr><td>comp: bool = gt ii n</td></tr>
+<tr><td>br comp for.end for.body</td></tr>
+</table>> shape="plaintext"];
+
+"for.end" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.end</td></tr>
+<tr><td>comp2: bool = eq sum n</td></tr>
+<tr><td>br comp2 if.success if.failure.end</td></tr>
+</table>> shape="plaintext"];
+
+"for.incre" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">for.incre</td></tr>
+<tr><td>i: int = add i v1</td></tr>
+<tr><td>jmp for.cond.1</td></tr>
+</table>> shape="plaintext"];
+
+"if.body" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">if.body</td></tr>
+<tr><td>sum: int = add sum i</td></tr>
+<tr><td>sum: int = add sum qut</td></tr>
+</table>> shape="plaintext"];
+
+"if.failure.end" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">if.failure.end</td></tr>
+<tr><td>print result</td></tr>
+</table>> shape="plaintext"];
+
+"if.success" [label=<<table cellspacing="0">
+<tr><td bgcolor="Green">if.success</td></tr>
+<tr><td>result: int = id v0</td></tr>
+</table>> shape="plaintext"];
+
+"_B1" -> "for.cond.1" ;
+
+"_pre_for.incre_" -> "for.incre" ;
+
+"for.body" -> "_pre_for.incre_" [color="red"];
+
+"for.body" -> "if.body" [color="blue"];
+
+"for.cond.1" -> "for.body" [color="red"];
+
+"for.cond.1" -> "for.end" [color="blue"];
+
+"for.end" -> "if.failure.end" [color="red"];
+
+"for.end" -> "if.success" [color="blue"];
+
+"for.incre" -> "for.cond.1" ;
+
+"if.body" -> "_pre_for.incre_" ;
+
+"if.success" -> "if.failure.end" ;
+
+}}

@@ -11,6 +11,8 @@ let opt_local opt blck =
 let opt_global opt func =
   if String.(opt = "SSA")
   then Ssa.to_ssa func
+  else if String.(opt = "LICM")
+  then fst (Licm.insert_preheaders func)
   else func
 
 (**Interprocedural optimizations*)
@@ -31,9 +33,11 @@ let optimize_single prog optimization =
   | _ -> failwith "Unsupported optimization type"
 
 let process_gen_cfg (dir, prog, fname): unit =
-  let base = sprintf "%s_cfg.dot" fname in
+  let base = sprintf "%s_cfg.png" fname in
   let path = Filename.concat dir base in
-  let oc = Out_channel.create path in
+  let 
+  let oc = Core_unix.
+  let fin = Core_unix
   Bril.to_dot prog ~verbose:false ~oc;
   Out_channel.close oc
 
