@@ -13,8 +13,8 @@ module SS = CFG.VS
 
 (**[footers v cfg doms] is the set of footers of [v]*)
 let footers_of_v v cfg doms =
-  let doms_v = DOM.succs doms v in
-  SS.filter (CFG.succs cfg v) ~f:(DOM.VS.mem doms_v)
+  let subs_v = DOM.preds doms v in
+  SS.filter (CFG.preds cfg v) ~f:(DOM.VS.mem subs_v)
 
 (**Nodes that are headers*)
 let compute_headers cfg doms =
