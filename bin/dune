@@ -2,5 +2,5 @@
  (name main)
   (preprocess	
   (pps ppx_jane))	
- (libraries core_unix.command_unix core df global ir)
+ (libraries core_unix.command_unix core global ir)
 )

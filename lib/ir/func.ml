@@ -131,7 +131,7 @@ let of_json (json: Yojson.Basic.t) =
 
 let to_json (func: t) : Yojson.Basic.t =
   let instrs =
-    List.map (G.vert_lst func.graph)
+    List.map (G.bfs func.graph func.entry)
       ~f:(fun n -> Instr.Label n :: (SM.find_exn func.map n))
     |> List.concat in 
   `Assoc

@@ -34,14 +34,15 @@ let preprocess (func: Func.t) =
          ~default:instr1
     | None -> instr1 in
   let process_blk blk = List.map blk ~f:instr_folder in
-  (*If func has arguments, add extra block at start*)
+  (*Add extra block at start*)
   let decoy_content_0 = 
     (*Copies argk into vk for each k*)
     List.mapi func.args
       ~f:(fun i (a, t) ->
         let dst = (sprintf "v%d_0" i, t) in
         Instr.Unary (dst, Op.Unary.Id, a)) in
-  let decoy_content = Instr.Jmp func.entry :: decoy_content_0 in
+  let decoy_content = List.append decoy_content_0
+                        [Instr.Jmp func.entry] in
   let decoy = "_decoy" in
   let new_map = SM.set (SM.map func.map ~f:process_blk)
                   ~key:decoy ~data:decoy_content in
@@ -70,7 +71,7 @@ let vars_to_defs_and_typs (func: Func.t) num_vars =
         | Some (v, typ) ->
            let i = parse v in
            arr.(i) <- (typ, SS.add (snd arr.(i)) b)) in
-  func.graph |> Func.G.vert_lst |> List.iter  ~f:add_defs_and_typs;
+  func.graph |> Func.G.vert_lst |> List.iter ~f:add_defs_and_typs;
   arr
 
 (**First part of the algorithm... *)

@@ -1,5 +1,5 @@
 (library
 (name global)
-(libraries ir util core)
+(libraries ir util core dataflow)
 (preprocess
 (pps ppx_jane)))	

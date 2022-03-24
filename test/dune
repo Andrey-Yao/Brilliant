@@ -2,4 +2,4 @@
  (name test)
  (preprocess
   (pps ppx_jane))
- (libraries ir core_unix.sys_unix core unix df ounit2))
+ (libraries ir global core_unix.sys_unix core ounit2))

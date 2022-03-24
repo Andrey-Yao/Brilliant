@@ -93,7 +93,6 @@ module DomFrontProperties = struct
 end
 
 
-
 module SubTreeProperties = struct
 
   let same_vertices doms1 doms2 =

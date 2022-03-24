@@ -11,6 +11,6 @@ pipeline = [
 [runs.myopt]
 pipeline = [
     "bril2json",
-    "dune exec -- bin/main.exe ",
+    "dune exec -- bin/main.exe -O gSSA ",
     "brili -p {args}",
 ]
