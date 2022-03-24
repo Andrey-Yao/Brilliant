@@ -35,21 +35,22 @@ let preprocess (func: Func.t) =
     | None -> instr1 in
   let process_blk blk = List.map blk ~f:instr_folder in
   (*If func has arguments, add extra block at start*)
-  let decoy_content = 
+  let decoy_content_0 = 
     (*Copies argk into vk for each k*)
     List.mapi func.args
       ~f:(fun i (a, t) ->
         let dst = (sprintf "v%d_0" i, t) in
         Instr.Unary (dst, Op.Unary.Id, a)) in
+  let decoy_content = Instr.Jmp func.entry :: decoy_content_0 in
   let decoy = "_decoy" in
   let new_map = SM.set (SM.map func.map ~f:process_blk)
                   ~key:decoy ~data:decoy_content in
   let new_graph = Func.G.add_edge func.graph
-                    ~src:decoy ~edg:Func.Next
-                    ~dst:(List.hd_exn func.order) in
-  ({func with map = new_map;
-              graph = new_graph;
-              order = decoy :: func.order},
+                    ~src:decoy ~edg:Func.Jump
+                    ~dst:func.entry in
+  ({ func with map = new_map;
+               graph = new_graph;
+               entry = decoy },
    SHT.length v2num)
 
 
@@ -69,15 +70,9 @@ let vars_to_defs_and_typs (func: Func.t) num_vars =
         | Some (v, typ) ->
            let i = parse v in
            arr.(i) <- (typ, SS.add (snd arr.(i)) b)) in
-  func.order |> List.tl_exn |> List.iter  ~f:add_defs_and_typs;
+  func.graph |> Func.G.vert_lst |> List.iter  ~f:add_defs_and_typs;
   arr
 
-(**Adding prepending phi function. Aware of labels*)
-let stick_phi_in_func phi funcs =
-  match funcs with
-  | (Instr.Label _ as h) :: t -> h :: phi :: t
-  | _ -> phi :: funcs 
-  
 (**First part of the algorithm... *)
 let insert_phis (func: Func.t) subfront var2typndefs =
   let num_vars = Array.length var2typndefs in
@@ -174,7 +169,7 @@ let rec rename_block_help subtree b2i cfg stacks counts x =
   b2i'''
 
 
-let rename_blks subtree num_vars (func: Func.t) : Func.t =
+let rename_blks subtree num_vars old_entry (func: Func.t) : Func.t =
   let stacks = Array.create ~len:num_vars [] in
   let counts = Array.create ~len:num_vars 0 in
   (*Because func args aliases are already defined in decoy*)
@@ -183,19 +178,19 @@ let rename_blks subtree num_vars (func: Func.t) : Func.t =
     counts.(i) <- 1
   done;
   (*Not decoy!! Actual entry block*)
-  let entry_real =
-    List.nth_exn func.order 1 in
+  let entry_real = old_entry in
   let b2i = rename_block_help subtree func.map func.graph
               stacks counts entry_real in
   { func with map = b2i }
 
 
 let to_ssa (func: Func.t) =
+  let old_entry = func.entry in
   let func', num_vars = preprocess func in
   let var2typndefs = vars_to_defs_and_typs func' num_vars in
   let dominators = Dom.dominators func' in
   let subfront = Dom.submissive_frontier dominators func'.graph in
   let subtree = Dom.submissive_tree dominators in
   let func'' = insert_phis func' subfront var2typndefs in
-  rename_blks subtree num_vars func''
+  rename_blks subtree num_vars old_entry func''
   

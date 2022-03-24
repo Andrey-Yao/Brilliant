@@ -4,7 +4,7 @@ open Common
 
 type block_t = Instr.t List.t
 
-type edge_lbl = True | False | Jump | Next [@@deriving sexp]
+type edge_lbl = True | False | Jump [@@deriving sexp]
 
 module G =
   Graph.MakeLabelled(
@@ -21,8 +21,8 @@ type t = {
     map : block_t SM.t; (*yeah*)
     args : Instr.dest list;
     name : string; (*Name of function*)
+    entry : string; (*entry block*)
     graph : G.t; (*The control flow graph*)
-    order : string list; (*Blocks in original or;der*)
     ret_type : Bril_type.t option;
   }
 
@@ -40,10 +40,10 @@ let next_block (instrs : Instr.t list) (func : t) (i : int ref) :
     | _ ->
         sprintf "_B%d" (i := !i + 1; !i), instrs
   in
+  let src = name in
   (*The [curr] returned is in reversed order*)
   let rec step curr rest g =
     let open G in
-    let src = name in
     match rest with
     | [] -> (curr, rest, g)
     (*Next three cases are terminators*)
@@ -56,32 +56,31 @@ let next_block (instrs : Instr.t list) (func : t) (i : int ref) :
     | (Ret _ as h) :: t -> (h :: curr, t, add_vert g name)
     (*Peek ahead to see if it is a label next*)
     | (Label blk as h) :: rst ->
-        (curr, h :: rst, add_edge ~src ~edg:Next ~dst:blk g)
+       let j = Jmp blk in
+       (j :: curr, h :: rst, add_edge ~src ~edg:Jump ~dst:blk g)
     | h :: t -> step (h :: curr) t g
   in
   let graph = G.add_vert func.graph name in
   let curr, rest, graph' = step [] tail graph in
   let lst = List.rev curr in
   let map = String.Map.add_exn ~key:name ~data:lst func.map in
-  (rest, { func with order = name :: func.order; map; graph = graph' })
+  (rest, { func with map; graph = graph' })
 
 (** Updates [info] recursively *)
-let rec process_instrs instrs info i =
+let rec process_instrs instrs func i =
   match instrs with
-  | [] -> info
+  | [] -> func
   | _ ->
-      let res = next_block instrs info i in
+      let res = next_block instrs func i in
       process_instrs (fst res) (snd res) i
-
 
 let clean func =
   let reachable =
-    let root = List.hd_exn func.order in
     let set = String.Hash_set.create () in
     let edges = Queue.create () in
     let queue = Queue.create () in
-    Queue.enqueue queue root;
-    Hash_set.add set root;
+    Queue.enqueue queue func.entry;
+    Hash_set.add set func.entry;
     while queue |> Queue.is_empty |> not do
       let u = Queue.dequeue_exn queue in
       G.VS.iter (G.succs func.graph u)
@@ -92,17 +91,14 @@ let clean func =
                 Queue.enqueue edges (u, v))
           else ())
     done;
-    SS.of_hash_set set in
-  match func.order with
-  | [] -> func
-  | _ ->
-     let unreachable = SS.diff (func.order |> SS.of_list) reachable in
-     let order = List.filter ~f:(SS.mem reachable) func.order in
-     let graph, map =
-       SS.fold unreachable
-         ~init: (func.graph, func.map)
-         ~f:(fun (g, m) v -> G.del_vert g v, SM.remove m v) in
-     { func with order; graph; map }
+    G.VS.of_hash_set set in
+  let unreachable =
+    G.VS.diff (G.vert_lst func.graph |> G.VS.of_list) reachable in
+  let graph, map =
+    G.VS.fold unreachable
+      ~init: (func.graph, func.map)
+      ~f:(fun (g, m) v -> G.del_vert g v, SM.remove m v) in
+  { func with graph; map }
 
 
 let of_json (json: Yojson.Basic.t) =
@@ -119,32 +115,38 @@ let of_json (json: Yojson.Basic.t) =
   let instructions =
     json |> member "instrs" |> to_list_nonnull |> List.map ~f:Instr.of_json
   in
+  let instructions' =
+    let instrs_rev = List.rev instructions in
+    match instrs_rev with
+    | Ret _ :: _ -> instructions
+    | _ -> List.rev (Instr.Ret None :: instrs_rev) in
+  let entry = match instructions with
+    | Instr.Label lbl  :: _ -> lbl
+    | _ -> "_B1" in
   let init_info = {
-      args; name; ret_type; order = []; graph = G.empty; map = String.Map.empty;
-    }
-  in
-  process_instrs instructions init_info (ref 0)
-  |> (fun inf -> { inf with order = List.rev inf.order })|> clean
+      args; name; ret_type; entry; graph = G.empty; map = String.Map.empty;
+    } in
+  process_instrs instructions' init_info (ref 0) |> clean
 
 
-let to_json (g: t) : Yojson.Basic.t =
+let to_json (func: t) : Yojson.Basic.t =
   let instrs =
-    List.map g.order
-      ~f:(fun n -> Instr.Label n :: (SM.find_exn g.map n))
+    List.map (G.vert_lst func.graph)
+      ~f:(fun n -> Instr.Label n :: (SM.find_exn func.map n))
     |> List.concat in 
   `Assoc
     ([
-        ("name", `String g.name);
+        ("name", `String func.name);
         ( "args",
           `List
-            (List.map g.args ~f:(fun (name, bril_type) ->
+            (List.map func.args ~f:(fun (name, bril_type) ->
                  `Assoc
                    [
                      ("name", `String name); ("type", Bril_type.to_json bril_type);
         ])) );
         ("instrs", `List (instrs |> List.map ~f:Instr.to_json));
       ]
-     @ Option.value_map g.ret_type ~default:[] ~f:(fun t ->
+     @ Option.value_map func.ret_type ~default:[] ~f:(fun t ->
            [ ("type", Bril_type.to_json t) ]))
 
 

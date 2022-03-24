@@ -28,11 +28,11 @@ module Forward (F : Frame) = struct
         (wdata_new, wlist_new)
 
   let solve (funct: Ir.Func.t) : t =
-    let initlist = funct.order in
+    let initlist = Ir.Func.G.vert_lst funct.graph in
     let initdata =
-      List.fold
+      List.fold initlist
         ~f:(fun a e -> String.Map.set ~key:e ~data:F.top a)
-        ~init:String.Map.empty funct.order
+        ~init:String.Map.empty
     in
     let rec helper (wdata, wlist) =
       match wlist with
@@ -70,11 +70,11 @@ module Backward (F : Frame) = struct
         (wdata_new, wlist_new)
 
   let solve (funct : Ir.Func.t) : t =
-    let initlist = funct.order in
+    let initlist = Ir.Func.G.vert_lst funct.graph in
     let initdata =
-      List.fold
+      List.fold initlist
         ~f:(fun a e -> String.Map.set ~key:e ~data:F.top a)
-        ~init:String.Map.empty funct.order
+        ~init:String.Map.empty
     in
     let rec helper (wdata, wlist) =
       match wlist with

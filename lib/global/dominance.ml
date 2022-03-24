@@ -13,7 +13,7 @@ type t = G.t
 
 (**Gives the reverse postorder of [graph] starting from 
  [hd order] as a list. Unreachable nodes are omitted *)
-let reverse_post_order ~order ~cfg
+let reverse_post_order ~entry ~cfg
     : string list =
   (*Starts from [node] as root and does a postorder traversal
     while prepending elements to stack, while keeping track of
@@ -24,14 +24,11 @@ let reverse_post_order ~order ~cfg
     if Hash_set.mem set node then ()
     else
       (Hash_set.add set node;
-        CFG.VS.iter (CFG.succs cfg node)
-            ~f:(fun v -> traverse v);
-          Stack.push stack node) in
-  match order with
-  | [] -> []
-  | entry :: _ ->
-     traverse entry;
-     Stack.to_list stack
+       CFG.VS.iter (CFG.succs cfg node)
+         ~f:(fun v -> traverse v);
+       Stack.push stack node) in
+  traverse entry;
+  Stack.to_list stack
 
 (**Performs a single update in the dominator set for the 
    block [b] in [doms]. Returns [true] if change happened.
@@ -58,7 +55,7 @@ let step_dom (doms: G.VS.t SHT.t) (cfg: CFG.t) (b:string): bool =
    [v] in [g] are exactly the nodes that dominate [v].*)
 let dominators (f: Ir.Func.t): t =
   let open G in
-  let rpo = reverse_post_order ~order:f.order ~cfg:f.graph in
+  let rpo = reverse_post_order ~entry:f.entry ~cfg:f.graph in
   let full = VS.of_list rpo in
   let doms = SHT.create () in
   List.iter rpo ~f:(fun b -> SHT.set doms ~key:b ~data: full);

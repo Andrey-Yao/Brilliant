@@ -1,8 +1,9 @@
 open! Core
 open Util
 
-(**[Next] is fall through*)
-type edge_lbl = True | False | Jump | Next
+(**All blocks must have a terminator.
+   Fall throughs are converted to jumps*)
+type edge_lbl = True | False | Jump
 
 (**[G] is the module of the CFG*)
 module G: Sig.Labelled
@@ -16,8 +17,8 @@ type t = {
     map : block_t String.Map.t; (*yeah*)
     args : Instr.dest list;
     name : string; (*Name of function*)
+    entry : string; (*entry block*)
     graph : G.t; (*The control flow graph*)
-    order : string list; (*Blocks in original or;der*)
     ret_type : Bril_type.t option;
   }
 

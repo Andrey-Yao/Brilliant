@@ -52,7 +52,7 @@ module type Unlabelled = sig
 
   val vert_lst: t -> v list
 
-  val bfs: t -> v -> t
+  val spanning_tree: t -> v -> t
   
   (**Generic function for outputting graph to graphviz form.*)
   val to_dot : oc:Out_channel.t -> label:string -> ?nf:(v -> string)
@@ -71,6 +71,7 @@ module type Labelled = sig
   val add_edge: t -> src:v -> edg:e -> dst:v -> t
   val succs_e: t -> v -> ES.t
   val preds_e: t -> v -> ES.t
+  (* val bfs: t -> v -> v list *)
 
   (**Generic function for outputting graph to graphviz form.*)
   val to_dot : oc:Out_channel.t -> label:string -> ?nf:(v -> string)

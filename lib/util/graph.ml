@@ -91,7 +91,7 @@ module MakeUnlabelled(VI: VIngredient) = struct
 
   let vert_lst g = VM.keys g
 
-  let bfs g root =
+  let spanning_tree g root =
     let set = ref VS.empty in
     let edges = Stack.create () in
     let queue = Queue.create () in
@@ -210,6 +210,24 @@ module MakeLabelled(VI: VIngredient)(EI: EIngredient) = struct
     VM.set g ~key:dst ~data:(preds_dst', succs_dst)
 
   let vert_lst g = VM.keys g
+
+  let bfs g entry =
+    let set = ref VS.empty in
+    let verts = Stack.create () in
+    let queue = Queue.create () in
+    Queue.enqueue queue entry;
+    set := VS.add !set entry;
+    while queue |> Queue.is_empty |> not do
+      let u = Queue.dequeue_exn queue in
+      Stack.push verts u;
+      VS.iter (succs g u)
+        ~f:(fun v ->
+          if not (VI.equal u v) && not (VS.mem !set v)
+          then (Queue.enqueue queue v;
+                set := VS.add !set v)
+          else ())
+    done;
+    verts |> Stack.to_list |> List.rev
 
   let to_dot ~(oc:Out_channel.t) ~label
         ?(nf = default_np) ?(ef=default_elp) g =

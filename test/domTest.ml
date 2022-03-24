@@ -66,15 +66,15 @@ module DominanceProperties = struct
     enumerate_paths_help g src dst seen path paths;
     List.map !paths ~f:(G.VS.of_list)
 
-  let check_dom_single doms cfg root v =
+  let check_dom_single doms cfg entry v =
     let doms_v = G.succs doms v in
-    let paths_v = enumerate_paths cfg root v in (*
+    let paths_v = enumerate_paths cfg entry v in (*
     List.iter paths_v ~f:(fun path ->
         path |> G.VS.to_list |> List.to_string ~f:String.to_string |> print_endline); *)
     List.for_all paths_v ~f:(fun p ->
         G.VS.is_subset doms_v ~of_:p)
 
-  let test_all doms cfg name root =
+  let test_all doms cfg name entry =
     let vertices = CFG.vert_lst cfg in
     let tests =
       List.map vertices
@@ -82,7 +82,7 @@ module DominanceProperties = struct
           sprintf "Doms of [%s]" v >::
             (fun _ ->
               assert_bool "path"
-                (check_dom_single doms cfg root v))) in
+                (check_dom_single doms cfg entry v))) in
     sprintf "Dominance [%s]" name >::: tests
 end
 
@@ -128,11 +128,12 @@ module SubTreeProperties = struct
 end
 
 let test_all (func: Ir.Func.t) =
-  let root = List.hd_exn func.order in
+  let entry = func.entry in
+  let blks = func.graph |> CFG.vert_lst in
   let doms = Dom.dominators func in
   let domtree = Dom.submissive_tree doms in
   [
-    PosetProperties.test_all doms func.order func.name;
-    DominanceProperties.test_all doms func.graph func.name root;
+    PosetProperties.test_all doms blks func.name;
+    DominanceProperties.test_all doms func.graph func.name entry;
     SubTreeProperties.test_all domtree doms func.name
   ]
