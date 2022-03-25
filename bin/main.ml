@@ -12,7 +12,7 @@ let opt_global opt func =
   if String.(opt = "SSA")
   then Ssa.to_ssa func
   else if String.(opt = "LICM")
-  then fst (Licm.insert_preheaders func)
+  then Licm.licm func
   else func
 
 (**Interprocedural optimizations*)

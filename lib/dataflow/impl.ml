@@ -1,14 +1,13 @@
 open! Core
-open Sig
 open Ir
 open Util.Common
 
-module ReachingDefinitionsF : Frame = struct
+module ReachingDefinitionsF = struct
 
-  type p = SIS.t SM.t
   (**[p] is a map from names of defined [vars] to
    sets of [(block_name, instruction)], where
    [instruction] has [var] as [dest]*)
+  type p = SIS.t SM.t
 
   let top = SM.empty
 

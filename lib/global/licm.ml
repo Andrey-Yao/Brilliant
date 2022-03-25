@@ -58,7 +58,7 @@ let insert_preheader (func: Func.t) loops head hair: Func.t =
       ~init:(CFG.add_edge ~src:hair ~edg:Func.Jump
                 ~dst:head func.graph)
       ~f:(fun acc (e, v) ->
-        let g = CFG.del_edge acc v head in
+        let g = CFG.del_edge acc ~src:v ~dst:head in
         CFG.add_edge g ~src:v ~edg:e ~dst:hair) in
   let neu_map =
     SM.add_exn func.map
@@ -89,7 +89,41 @@ let insert_preheaders (func: Func.t) : Func.t * string SM.t =
   List.fold headers ~init:(func, SM.empty) ~f:folder
 
 
-let find_loop_inv_instrs (func: Func.t) loop reaching_defs =
+let vars2defs_in_loop (func:Func.t) loop =
+  (*Maps var name to definitions in loop*)
+  let vars2defs = SHT.create () in
+  let jam var blk index =
+    let data = match Hashtbl.find vars2defs var with
+      | None -> [(blk, index)]
+      | Some lst -> (blk, index) :: lst in
+    Hashtbl.set vars2defs ~key:var ~data in
+  List.iter loop
+    ~f:(fun b ->
+      List.iteri (SM.find_exn func.map b)
+        ~f:(fun i instr ->
+          match Instr.dest instr with
+          | Some (d, _) -> jam d b i
+          | None -> ()));
+  vars2defs
+
+
+let vars2uses_in_loop (func:Func.t) loop =
+  (*Maps var name to uses in loop*)
+  let vars2uses = SHT.create () in
+  let jam var blk index =
+    let data = match Hashtbl.find vars2uses var with
+      | None -> [(blk, index)]
+      | Some lst -> (blk, index) :: lst in
+    Hashtbl.set vars2uses ~key:var ~data in
+  List.iter loop
+    ~f:(fun b ->
+      List.iteri (SM.find_exn func.map b)
+        ~f:(fun i instr ->
+          List.iter (Instr.args instr)
+            ~f:(fun a -> jam a b i)));
+  vars2uses
+
+let find_loop_inv_instrs (func: Func.t) loops is_pure =
   (*Maps var name to definitions in loop*)
   let vars_2_defs = SHT.create () in
   let jam var blk index =
@@ -97,7 +131,7 @@ let find_loop_inv_instrs (func: Func.t) loop reaching_defs =
       | None -> [(blk, index)]
       | Some lst -> (blk, index) :: lst in
     Hashtbl.set vars_2_defs ~key:var ~data in
-  List.iter loop
+  List.iter loops
     ~f:(fun b ->
       List.iteri (SM.find_exn func.map b)
         ~f:(fun i instr ->
@@ -113,11 +147,12 @@ let find_loop_inv_instrs (func: Func.t) loop reaching_defs =
     | _ -> false in
   let foldi_instrs blk i invars instr =
     match Instr.dest instr with
-    | Some (d, _) ->
+    | Some _ ->
        if SIS.mem invars (blk, i)
        then invars
        else if List.for_all (Instr.args instr)
-               ~f:(predicate_arg invars)
+                 ~f:(predicate_arg invars)
+               && is_pure instr
        then (changed := true; SIS.add invars (blk, i))
        else invars
     | None -> invars in
@@ -127,6 +162,86 @@ let find_loop_inv_instrs (func: Func.t) loop reaching_defs =
       ~f:(foldi_instrs b) in
   let invars = ref SIS.empty in
   while !changed do
-    invars := List.fold loop ~init:!invars
+    invars := List.fold loops ~init:!invars
                 ~f:iter_block; done;
   !invars
+
+
+(**[exits_of_loop loop func] is the loop exits of loop, i.e. 
+   successors of blocks in [loop] minus the loop blocks
+   themselves*)
+let exits_of_loop loop (func: Func.t) =
+  let open Func.G in
+  let succs_all =
+    List.fold loop
+      ~init: VS.empty
+      ~f:(fun acc blk ->
+        VS.union acc
+          (succs func.graph blk)) in
+  List.filter (VS.to_list succs_all)
+    ~f:(fun blk -> not (List.mem loop blk ~equal:String.equal))
+
+
+let is_pure : (Instr.t -> bool) =
+  let open Instr in
+  function
+  | Binary _
+    | Unary _
+    | Const _ 
+    | Nop -> true
+  | _ -> false
+
+  
+(**Moves invariant instructions out of loops under [head]*)
+let hoist (func:Func.t) doms head preh loops exits (invars : SIS.t) vars2defs
+      (reachingdefs : Dataflow.Factory.ReachingDefinitions.t) : Func.t =
+  let module IS = Int.Set in
+  let blk_to_invars = SHT.create () in
+  let iter_invar (blk, i) =
+    let instrs = SM.find_exn func.map blk in
+    let instr = List.nth_exn instrs i in
+    match Instr.dest instr with
+    | None -> ()
+    | Some (d, _) -> begin
+       (*exact one def of d in loops*)
+       if List.length (SHT.find_exn vars2defs d) = 1
+          (*Not live in at head*)
+          && (let rdb = SM.find_exn reachingdefs head in
+              let sis = SM.find_exn rdb d in
+              SIS.exists sis ~f:(fun (b, _) -> String.equal head b )|> not)
+          (*Dominates loop exits*)
+          && (let subs_blk = DOM.preds doms blk in
+              List.for_all exits ~f:(DOM.VS.mem subs_blk))
+       then let data_old = match SHT.find blk_to_invars d with
+              | None -> IS.empty
+              | Some some -> some in
+            SHT.set blk_to_invars ~key:blk ~data:(IS.add data_old i)
+       else () end in
+  SIS.iter ~f:iter_invar invars;
+  let fold_loop (acc : Func.block_t SM.t) (b : string) : Func.block_t SM.t =
+    let invars_b = SHT.find_exn blk_to_invars b in
+    let instrs_b = SM.find_exn acc b in
+    let inv = List.filteri instrs_b ~f:(fun i _ -> IS.mem invars_b i) in
+    let ninv = List.filteri instrs_b ~f:(fun i _ -> IS.mem invars_b i |> not) in
+    let acc' = SM.set acc ~key:b ~data:ninv in
+    let preh_old = SM.find_exn acc preh in
+    SM.set acc' ~key:preh ~data:(List.append inv preh_old) in
+  let new_map = List.fold loops ~init:(func.map) ~f:fold_loop in
+  { func with map = new_map }
+
+
+let licm func =
+  let func', head2preh = insert_preheaders func in
+  let headers = SM.keys head2preh in
+  (*Dominators should remain the same throughout hoisting*)
+  let doms = Dominance.dominators func' in
+  let reachingdefs = Dataflow.Factory.ReachingDefinitions.solve func' in
+  List.fold headers
+    ~init:func'
+    ~f:(fun acc head ->
+      let loops = loops_of_header head acc.graph doms |> SS.to_list in
+      let preh = SM.find_exn head2preh head in
+      let exits = exits_of_loop loops acc in
+      let vars2defs = vars2defs_in_loop func' loops in
+      let invars = find_loop_inv_instrs acc loops is_pure in
+      hoist acc doms head preh loops exits invars vars2defs reachingdefs)
